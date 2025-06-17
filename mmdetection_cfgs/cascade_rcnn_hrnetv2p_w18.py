@@ -24,6 +24,24 @@ load_from = "https://download.openmmlab.com/mmdetection/v2.0/hrnet/cascade_rcnn_
 # ===================== DATASET =====================
 dataset_type = 'CocoDataset'
 data_root = '/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/12_RGB_ObjDet_640_fL/'
+classes = ['betula papyrifera', 'tsuga canadensis', 'picea abies',
+       'acer saccharum', 'betula sp.', 'pinus sylvestris', 'picea rubens',
+       'betula alleghaniensis', 'larix decidua', 'fagus grandifolia',
+       'picea sp.', 'fagus sylvatica', 'dead tree', 'acer pensylvanicum',
+       'populus balsamifera', 'quercus ilex', 'quercus robur',
+       'pinus strobus', 'larix laricina', 'larix gmelinii', 'pinus pinea',
+       'populus grandidentata', 'pinus montezumae', 'abies alba',
+       'betula pendula', 'pseudotsuga menziesii', 'fraxinus nigra',
+       'dacrydium cupressinum', 'cedrus libani', 'acer pseudoplatanus',
+       'pinus elliottii', 'cryptomeria japonica', 'pinus koraiensis',
+       'abies holophylla', 'alnus glutinosa', 'fraxinus excelsior',
+       'coniferous', 'eucalyptus globulus', 'pinus nigra',
+       'quercus rubra', 'tilia europaea', 'abies firma', 'acer sp.',
+       'metrosideros umbellata', 'acer rubrum', 'picea mariana',
+       'abies balsamea', 'castanea sativa', 'tilia cordata',
+       'populus sp.', 'crataegus monogyna', 'quercus petraea',
+       'acer platanoides']
+metainfo=dict(classes=classes)
 
 img_scale = (640, 640)
 train_pipeline = [
@@ -46,6 +64,7 @@ train_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
+        metainfo=metainfo,
         ann_file='annotations/instances_train.json',
         data_prefix=dict(img='train/images/'),
         pipeline=train_pipeline,
@@ -59,6 +78,7 @@ val_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
+        metainfo=metainfo,
         ann_file='annotations/instances_val.json',
         data_prefix=dict(img='val/images/'),
         pipeline=test_pipeline
