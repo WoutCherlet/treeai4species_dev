@@ -36,7 +36,7 @@ def data_to_coco_format(root_dir, output_dir):
     # TODO: works now only for 12_RGB_...
     class_file = os.path.join(root_dir, "class12_RGB_all_L.xlsx")
     classes_df = pd.read_excel(class_file)
-    classes = {row["Sp_ID"]: row["Sp_Class"] for _, row in classes_df.iterrows()}
+    classes = [{"id": int(row["Sp_ID"]), "name": row["Sp_Class"]} for _,row in classes_df.iterrows()]
 
     def process_split(split):
         image_id = 0
@@ -113,9 +113,33 @@ def data_to_coco_format(root_dir, output_dir):
 
     return
 
-if __name__ == "__main__":
+def get_list_of_classes():
+
+    # harcoded
+    # TODO: make this general for all files
+    root_dir="/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL"
+    class_file = os.path.join(root_dir, "class12_RGB_all_L.xlsx")
+
+    classes_df = pd.read_excel(class_file)
+
+    print(classes_df)
+
+    classes_list = classes_df["Sp_Class"].to_numpy()
+
+    print(repr(classes_list))
+    print(len(classes_list))
+
+    return classes_list
+
+
+
+
+
+if __name__ == "__main__": 
     # Modify paths here
-    data_to_coco_format(
-        root_dir="/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL",
-        output_dir="/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/12_RGB_ObjDet_640_fL"
-    )
+    # data_to_coco_format(
+    #     root_dir="/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL",
+    #     output_dir="/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/12_RGB_ObjDet_640_fL"
+    # )
+
+    get_list_of_classes()
