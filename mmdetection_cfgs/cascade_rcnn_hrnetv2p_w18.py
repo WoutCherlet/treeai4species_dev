@@ -11,9 +11,9 @@ _base_ = "mmdet::hrnet/cascade-rcnn_hrnetv2p-w18-20e_coco.py"
 model = dict(
     roi_head=dict(
         bbox_head=[
-            dict(type='Shared2FCBBoxHead', num_classes=53),
-            dict(type='Shared2FCBBoxHead', num_classes=53),
-            dict(type='Shared2FCBBoxHead',num_classes=53),
+            dict(type='Shared2FCBBoxHead', num_classes=63),
+            dict(type='Shared2FCBBoxHead', num_classes=63),
+            dict(type='Shared2FCBBoxHead',num_classes=63),
         ]
     )
 )
@@ -23,24 +23,27 @@ load_from = "https://download.openmmlab.com/mmdetection/v2.0/hrnet/cascade_rcnn_
 
 # ===================== DATASET =====================
 dataset_type = 'CocoDataset'
-data_root = '/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/12_RGB_ObjDet_640_fL/'
-classes = ['betula papyrifera', 'tsuga canadensis', 'picea abies',
-       'acer saccharum', 'betula sp.', 'pinus sylvestris', 'picea rubens',
-       'betula alleghaniensis', 'larix decidua', 'fagus grandifolia',
-       'picea sp.', 'fagus sylvatica', 'dead tree', 'acer pensylvanicum',
+data_root = '/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0_masked_images_as_gt/'
+classes = ['picea abies', 'pinus sylvestris', 'larix decidua',
+       'fagus sylvatica', 'dead tree', 'abies alba',
+       'pseudotsuga menziesii', 'acer pseudoplatanus',
+       'fraxinus excelsior', 'acer sp.', 'tilia cordata', 'quercus sp.',
+       'Tilia platyphyllos', 'Tilia spp', 'Ulmus glabra',
+       'betula papyrifera', 'tsuga canadensis', 'acer saccharum',
+       'betula sp.', 'picea rubens', 'betula alleghaniensis',
+       'fagus grandifolia', 'picea sp.', 'acer pensylvanicum',
        'populus balsamifera', 'quercus ilex', 'quercus robur',
        'pinus strobus', 'larix laricina', 'larix gmelinii', 'pinus pinea',
-       'populus grandidentata', 'pinus montezumae', 'abies alba',
-       'betula pendula', 'pseudotsuga menziesii', 'fraxinus nigra',
-       'dacrydium cupressinum', 'cedrus libani', 'acer pseudoplatanus',
+       'populus grandidentata', 'pinus montezumae', 'betula pendula',
+       'fraxinus nigra', 'dacrydium cupressinum', 'cedrus libani',
        'pinus elliottii', 'cryptomeria japonica', 'pinus koraiensis',
-       'abies holophylla', 'alnus glutinosa', 'fraxinus excelsior',
-       'coniferous', 'eucalyptus globulus', 'pinus nigra',
-       'quercus rubra', 'tilia europaea', 'abies firma', 'acer sp.',
-       'metrosideros umbellata', 'acer rubrum', 'picea mariana',
-       'abies balsamea', 'castanea sativa', 'tilia cordata',
-       'populus sp.', 'crataegus monogyna', 'quercus petraea',
-       'acer platanoides']
+       'abies holophylla', 'alnus glutinosa', 'coniferous',
+       'eucalyptus globulus', 'pinus nigra', 'quercus rubra',
+       'tilia europaea', 'abies firma', 'metrosideros umbellata',
+       'acer rubrum', 'picea mariana', 'abies balsamea',
+       'castanea sativa', 'populus sp.', 'crataegus monogyna',
+       'quercus petraea', 'acer platanoides', 'salix sp.', 'deciduous',
+       'robinia pseudoacacia', 'pinus sp.', 'salix alba', 'carpinus sp.']
 metainfo=dict(classes=classes)
 
 img_scale = (640, 640)
