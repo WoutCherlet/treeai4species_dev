@@ -48,17 +48,26 @@ def data_to_coco_format(root_dirs, class_dict, output_dir):
         annotations = []
         
         output_img_dir = os.path.join(output_dir, split, "images")
+        output_masked_img_dir = os.path.join(output_dir, split, "masked_images")
+        if not os.path.exists(output_img_dir):
+            os.makedirs(output_img_dir)
+        if not os.path.exists(output_masked_img_dir):
+            os.makedirs(output_masked_img_dir)
         
         # Process each root directory
         for root_dir in root_dirs:
             split_img_dir = os.path.join(root_dir, split, "images")
 
-            # TODO: TEMP: use masked images as gt
-            # in next iteration, save masked images somewhere and use custom dataset for masked loss
+            # if masked images exist, also copy them to seperate directory
             split_img_masked = os.path.join(root_dir, split, "images_masked")
+            masked_images = False
             if os.path.exists(split_img_masked):
-                print(f"INFO: using images_masked instead of images for {root_dir}")
-                split_img_dir = split_img_masked
+                masked_images = True
+
+            # TODO: TEMP: masked images as gt
+            # split_img_masked = os.path.join(root_dir, split, "images_masked")
+            # if os.path.exists(split_img_masked):
+            #     split_img_dir = split_img_masked
 
             split_lbl_dir = os.path.join(root_dir, split, "labels")
             
@@ -77,6 +86,7 @@ def data_to_coco_format(root_dirs, class_dict, output_dir):
                     potential_path = os.path.join(split_img_dir, base_fname + ext)
                     if os.path.exists(potential_path):
                         img_path = potential_path
+                        fname_original = base_fname + ext
                         break
                 
                 if img_path is None:
@@ -97,6 +107,10 @@ def data_to_coco_format(root_dirs, class_dict, output_dir):
                 
                 # Copy image to output folder with unique name
                 shutil.copy(img_path, os.path.join(output_img_dir, unique_fname))
+
+                if masked_images:
+                    # also copy masked image
+                    shutil.copy(os.path.join(split_img_masked, fname_original), os.path.join(output_masked_img_dir, unique_fname))
                 
                 # Add image entry
                 images.append({
@@ -297,7 +311,7 @@ if __name__ == "__main__":
 
     _, class_dict = get_list_of_classes()
 
-    odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0_masked_images_as_gt"
+    odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0"
 
     data_to_coco_format(root_dirs=root_dirs, class_dict=class_dict, output_dir=odir)
 
