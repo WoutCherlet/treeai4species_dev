@@ -2,16 +2,68 @@ import os
 import glob
 import json
 import cv2
-import numpy as np
 from tqdm import tqdm
 import argparse
-from pathlib import Path
 
 from mmdet.apis import init_detector, inference_detector
 from mmdet.utils import register_all_modules
-from mmcv import Config
-import torch
+from mmengine.config import Config, ConfigDict
 
+# hardcoded class_dict
+class_dict = {3: 'picea abies', 6: 'pinus sylvestris', 9: 'larix decidua', 12: 'fagus sylvatica', 13: 'dead tree', 24: 'abies alba', 26: 'pseudotsuga menziesii', 30: 'acer pseudoplatanus', 36: 'fraxinus excelsior', 43: 'acer sp.', 49: 'tilia cordata', 56: 'quercus sp.', 62: 'Tilia platyphyllos', 63: 'Tilia spp', 64: 'Ulmus glabra', 1: 'betula papyrifera', 2: 'tsuga canadensis', 4: 'acer saccharum', 5: 'betula sp.', 7: 'picea rubens', 8: 'betula alleghaniensis', 10: 'fagus grandifolia', 11: 'picea sp.', 14: 'acer pensylvanicum', 15: 'populus balsamifera', 16: 'quercus ilex', 17: 'quercus robur', 18: 'pinus strobus', 19: 'larix laricina', 20: 'larix gmelinii', 21: 'pinus pinea', 22: 'populus grandidentata', 23: 'pinus montezumae', 25: 'betula pendula', 27: 'fraxinus nigra', 28: 'dacrydium cupressinum', 29: 'cedrus libani', 31: 'pinus elliottii', 32: 'cryptomeria japonica', 33: 'pinus koraiensis', 34: 'abies holophylla', 35: 'alnus glutinosa', 37: 'coniferous', 38: 'eucalyptus globulus', 39: 'pinus nigra', 40: 'quercus rubra', 41: 'tilia europaea', 42: 'abies firma', 44: 'metrosideros umbellata', 45: 'acer rubrum', 46: 'picea mariana', 47: 'abies balsamea', 48: 'castanea sativa', 50: 'populus sp.', 51: 'crataegus monogyna', 52: 'quercus petraea', 53: 'acer platanoides', 61: 'salix sp.', 60: 'deciduous', 54: 'robinia pseudoacacia', 58: 'pinus sp.', 57: 'salix alba', 59: 'carpinus sp.'}
+
+def setup_tta_config_fixed(config_path, tta_transforms=None):
+    """Setup TTA configuration"""
+    cfg = Config.fromfile(config_path)
+    
+    if tta_transforms is None:
+        # Default TTA transforms
+        tta_transforms = [
+            # Horizontal flip
+            [
+                dict(type='RandomFlip', prob=1.0, direction='horizontal')
+            ],
+            # Multi-scale
+            [
+                dict(type='Resize', scale=(512, 512), keep_ratio=True)
+            ],
+            [
+                dict(type='Resize', scale=(768, 768), keep_ratio=True)
+            ],
+            # Combined transforms
+            [
+                dict(type='RandomFlip', prob=1.0, direction='horizontal'),
+                dict(type='Resize', scale=(512, 512), keep_ratio=True)
+            ],
+            [
+                dict(type='RandomFlip', prob=1.0, direction='horizontal'),
+                dict(type='Resize', scale=(768, 768), keep_ratio=True)
+            ], 
+            [
+                dict(type='PackDetInputs')
+            ]
+        ]
+    
+    # Setup TTA model wrapper
+    cfg.tta_model = dict(
+                type='DetTTAModel',
+                tta_cfg=dict(
+                    nms=dict(type='nms', iou_threshold=0.5), max_per_img=100))
+    cfg.tta_pipeline = [
+    dict(type='LoadImageFromFile',
+         backend_args=None),
+    dict(
+        type='TestTimeAug',
+        transforms=tta_transforms), 
+    ]
+    cfg.model = ConfigDict(**cfg.tta_model, module=cfg.model)
+    test_data_cfg = cfg.test_dataloader.dataset
+    while 'dataset' in test_data_cfg:
+        test_data_cfg = test_data_cfg['dataset']
+
+    test_data_cfg.pipeline = cfg.tta_pipeline
+
+    return cfg
 
 def setup_tta_config(config_path, tta_transforms=None):
     """Setup TTA configuration"""
@@ -97,25 +149,25 @@ def run_inference(config_path, checkpoint_path, test_images_dir, output_dir,
     # Load config and setup TTA if needed
     if use_tta:
         print("Setting up Test Time Augmentation")
-        cfg = setup_tta_config(config_path)
+        cfg = setup_tta_config_fixed(config_path)
+        model = init_detector(cfg, checkpoint_path, device='cuda:0', cfg_options={})
     else:
         cfg = Config.fromfile(config_path)
+        model = init_detector(cfg, checkpoint_path, device='cuda:0')
     
     # Initialize model
     print(f"Loading model from {checkpoint_path}...")
-    model = init_detector(cfg, checkpoint_path, device='cuda:0')
-    
-    # Get class names from config
-    classes = cfg.metainfo['classes']
     
     # Find all test images
-    image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.tif', '*.tiff']
+    image_extensions = ['*.png', '*.tif', '*.tiff']
     test_images = []
     for ext in image_extensions:
         test_images.extend(glob.glob(os.path.join(test_images_dir, ext)))
         test_images.extend(glob.glob(os.path.join(test_images_dir, ext.upper())))
     
     print(f"Found {len(test_images)} test images")
+
+    classes = list(class_dict.values())
     
     # Results storage
     all_results = []
@@ -166,7 +218,7 @@ def run_inference(config_path, checkpoint_path, test_images_dir, output_dir,
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 
                 # Draw label and score
-                label_text = f"{classes[label]}: {score:.2f}"
+                label_text = f"{label} ({classes[label]}): {score:.2f}"
                 cv2.putText(img, label_text, (x1, y1-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
             
@@ -174,15 +226,14 @@ def run_inference(config_path, checkpoint_path, test_images_dir, output_dir,
             vis_path = os.path.join(output_dir, 'visualizations', f"vis_{img_name}")
             cv2.imwrite(vis_path, img)
     
-    # Save results to JSON
+    # save results to json
     results_path = os.path.join(output_dir, 'inference_results.json')
     with open(results_path, 'w') as f:
         json.dump(all_results, f, indent=2)
     
-    # Save summary statistics  
+    # save summary  
     total_detections = sum(len(r['detections']) for r in all_results)
     avg_detections = total_detections / len(all_results) if all_results else 0
-    
     summary = {
         'total_images': len(all_results),
         'total_detections': total_detections,
@@ -213,62 +264,15 @@ def run_inference(config_path, checkpoint_path, test_images_dir, output_dir,
     
     return all_results
 
-def post_process_results():
-    # TODO: post processing of results here
-
-    # in public test dataset there are full black and white areas which are masked out, any bboxs that include these areas can be filtered out or cropped!
-
-    raise NotImplementedError
-
-def convert_results(results, output_path):
-    """
-    Convert results to COCO format for evaluation
-    
-    Args:
-        results: Results from run_inference
-        output_path: Path to save predictions.txt file at
-        image_info_dict: Optional dict with image dimensions {img_name: (width, height)}
-    """
-    all_results_lines = []
-    
-    # TODO: check output format results
-    for img_idx, result in enumerate(results):
-        # TODO: read bbox here and convert to format
-        # pseudocode:
-        '''
-        for bbox in result:
-            convert to fractional coords
-            width = w/img_width
-            height = h/img_height
-            x_center = x/img_width + width/2
-            y_center = y/img_height + height/2
-            conf = bbox.conf
-            species = bbox.cls
-        
-            line = f"{img_id} {species} {x_center} {y_center} {width} {height} {conf}
-        '''
-
-        continue
-
-    # write
-    with open(os.path.join(output_path, "predictions.txt"), 'w') as f:
-        for line in all_results_lines:
-            f.write(f"{line}\n")
-        
-    
-    
-    print(f"Saved final submission .txt to {output_path}")
-
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run inference with MMDetection model')
+    parser = argparse.ArgumentParser(description='inference script')
     parser.add_argument('--config', required=True, help='Path to config file')
     parser.add_argument('--checkpoint', required=True, help='Path to checkpoint file')
-    parser.add_argument('--test-dir', required=True, help='Directory containing test images')
-    parser.add_argument('--output-dir', required=True, help='Output directory for results')
-    parser.add_argument('--no-tta', action='store_true', help='Disable test time augmentation')
-    parser.add_argument('--conf-threshold', type=float, default=0.3, help='Confidence threshold')
-    parser.add_argument('--no-vis', action='store_true', help='Skip saving visualizations')
+    parser.add_argument('--test_dir', required=True, help='Directory containing test images')
+    parser.add_argument('--output_dir', required=True, help='Output directory for results')
+    parser.add_argument('--use_tta', action='store_true', help='Use test time augmentation')
+    parser.add_argument('--conf_threshold', type=float, default=0.3, help='Confidence threshold')
+    parser.add_argument('--no_vis', action='store_true', help='Skip saving visualizations')
     
     args = parser.parse_args()
     
@@ -278,13 +282,7 @@ if __name__ == "__main__":
         checkpoint_path=args.checkpoint,
         test_images_dir=args.test_dir,
         output_dir=args.output_dir,
-        use_tta=not args.no_tta,
+        use_tta=args.use_tta,
         conf_threshold=args.conf_threshold,
         save_visualizations=not args.no_vis
     )
-
-    converted_output_path = os.path.join(args.output_dir, "")
-    
-    # Optionally convert to COCO format
-    coco_output_path = os.path.join(args.output_dir, 'coco_format_results.json')
-    convert_results(results, coco_output_path)

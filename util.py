@@ -8,11 +8,22 @@ from mmengine.fileio import dump
 from tqdm import tqdm
 import pandas as pd
 
+from matplotlib import pyplot as plt
+from matplotlib import patches
 
-def label_file_to_list(label_file):
-    # # format: class x_center y_center width height
-    data = pd.read_csv(label_file, sep=" ", header=None)
-    data.columns = ["label", "x_center", "y_center", "width", "height"]
+def label_file_to_list(label_file, submission_output=False):
+    if submission_output:
+        # format: img_id species x_center y_center width height conf
+        data = pd.read_csv(label_file, 
+                           sep=" ", 
+                           header=None, 
+                           names=["img_id", "species", "x_center", "y_center", "width", "height", "conf"],
+                           dtype={"img_id": str})
+    else:
+        # input labels
+        # # format: class x_center y_center width height
+        data = pd.read_csv(label_file, sep=" ", header=None)
+        data.columns = ["label", "x_center", "y_center", "width", "height"]
     return data
 
 def xy_to_img_coordinates(labels, img):
@@ -23,7 +34,31 @@ def xy_to_img_coordinates(labels, img):
     labels["height"] = labels["height"]*height
     return labels
 
+def plot_image_with_boxes(image_file, label_file):
+    # read image and bboxs
+    bboxs = label_file_to_list(label_file)
+    img = cv2.imread(image_file)
 
+    # convert bboxs to image coordinates
+    bboxs = xy_to_img_coordinates(bboxs, img)
+
+    # plot
+    fig, ax = plt.subplots()
+    ax.imshow(img)
+    for _, row in bboxs.iterrows():
+        x = row["x_center"] - row["width"]/2
+        y = row["y_center"] - row["height"]/2
+        w = row["width"]
+        h = row["height"]
+        # cv2.rectangle(img, (x, y), (x+w, y+h), (0, 0, 255), 2)
+        rect = patches.Rectangle((x,y), w, h, linewidth=2, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+        ax.text(x,y, int(row["label"]), fontsize=8, color="white", bbox=dict(facecolor='red', edgecolor="none"))
+        
+    plt.show()
+    return 
+
+# for all datasets
 def data_to_coco_format(root_dirs, class_dict, output_dir):
     """
     Convert data from multiple root directories to COCO format.
@@ -177,9 +212,6 @@ def data_to_coco_format(root_dirs, class_dict, output_dir):
     
     return
 
-
-
-# for all datasets
 def data_to_coco_format_single(root_dir, output_dir):
     """
     Convert data from multiple root directories to COCO format.
@@ -275,6 +307,7 @@ def data_to_coco_format_single(root_dir, output_dir):
 
     return
 
+# list of classes in format for config files
 def get_list_of_classes():
 
     class_file_1 = "/Stor1/wout/TreeAI4Species/ObjDet/5_RGB_S_320_pL/class5_RGB_all_L.xlsx"
@@ -299,8 +332,6 @@ def get_list_of_classes():
 
 
 
-
-
 if __name__ == "__main__": 
     root_dir_1 = "/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL"
     root_dir_2 = "/Stor1/wout/TreeAI4Species/ObjDet/5_RGB_S_320_pL"
@@ -309,10 +340,13 @@ if __name__ == "__main__":
 
     root_dirs = [root_dir_1, root_dir_2, root_dir_3, root_dir_4]
 
-    _, class_dict = get_list_of_classes()
+    classes_list, class_dict = get_list_of_classes()
 
-    odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0"
+    print(classes_list)
+    print(class_dict)
 
-    data_to_coco_format(root_dirs=root_dirs, class_dict=class_dict, output_dir=odir)
+    # odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0"
+
+    # data_to_coco_format(root_dirs=root_dirs, class_dict=class_dict, output_dir=odir)
 
     # get_list_of_classes()
