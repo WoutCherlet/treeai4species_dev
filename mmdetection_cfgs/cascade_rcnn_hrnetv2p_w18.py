@@ -95,7 +95,7 @@ val_evaluator = dict(type='CocoMetric', ann_file=data_root + 'annotations/instan
 test_evaluator = val_evaluator
 
 # ===================== TRAINING =====================
-train_cfg = dict(max_epochs=36, val_interval=1)
+train_cfg = dict(max_epochs=50, val_interval=1)
 
 val_cfg = dict(type='ValLoop')  # The validation loop type
 test_cfg = dict(type='TestLoop')  # The testing loop type
@@ -128,3 +128,7 @@ visualizer = dict(
     vis_backends=[dict(type='LocalVisBackend'), dict(type='TensorboardVisBackend')],
     name='visualizer'
 )
+
+# ===================== TTA =====================
+
+

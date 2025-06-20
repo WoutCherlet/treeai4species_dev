@@ -6,13 +6,12 @@ import numpy as np
 from PIL import Image
 
 # TODO: also check if semantic segmentation data is the same pictures as object detection
-# TODO: how to deal with partially labelled plots -> masked loss?
-
 
 # NOTES:
 
 # 5_RGB_S_320_pL:
 #   has labels 62,63,64 ??
+# 0_rgb has different labels and winter images -> leave out for now
 
 def get_all_unique_ids(label_folders):
 
