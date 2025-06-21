@@ -1,0 +1,20 @@
+n_classes: 62
+num_epochs: 200
+batch_size: 2
+max_lr: 0.001
+loss_name: 'custom'
+model_path: '/Stor1/wouter/treeai4species/trained_models/segformer_mitb5_comboloss_datasampling'
+model_name: 'segformer'
+data_paths:
+    path_root: '/Stor1/wout/TreeAI4Species/SemSeg/'
+    dataset_1: 
+        name: '12_RGB_SemSegm_640_fL'
+        path_train: '/Stor1/wout/TreeAI4Species/SemSeg/12_RGB_SemSegm_640_fL/train/'
+        path_val: '/Stor1/wout/TreeAI4Species/SemSeg/12_RGB_SemSegm_640_fL/val/'
+    dataset_2:
+        name: '34_RGB_SemSegm_640_pL'
+        path_train: '/Stor1/wout/TreeAI4Species/SemSeg/34_RGB_SemSegm_640_pL/train/'
+        path_val: '/Stor1/wout/TreeAI4Species/SemSeg/34_RGB_SemSegm_640_pL/val/'
+    data_test:
+        path_test: '/Stor1/wout/TreeAI4Species/test_submission/SemSeg_test-images/'
+        path_prediction: '/Stor1/wout/TreeAI4Species/test_submission/SemSeg_test-images/predictions/'
