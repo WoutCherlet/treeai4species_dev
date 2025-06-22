@@ -9,8 +9,9 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(project_root, 'mmdetection_modules'))
 # Import custom modules to register them so they are recognized in config file
 import mmdetection_modules
+import mmdetection_modules.datasets.samplers
 
-from mmcv import Config
+from mmengine.config import Config, DictAction
 from mmengine.registry import RUNNERS
 from mmengine.runner import Runner
 
@@ -38,6 +39,21 @@ def parse_args():
         help='If specify checkpoint path, resume from it, while if not '
         'specify, try to auto resume from the latest checkpoint '
         'in the work directory.')
+    parser.add_argument(
+        '--cfg-options',
+        nargs='+',
+        action=DictAction,
+        help='override some settings in the used config, the key-value pair '
+        'in xxx=yyy format will be merged into config file. If the value to '
+        'be overwritten is a list, it should be like key="[a,b]" or key=a,b '
+        'It also allows nested list/tuple values, e.g. key="[(a,b),(c,d)]" '
+        'Note that the quotation marks are necessary and that no white space '
+        'is allowed.')
+    parser.add_argument(
+        '--launcher',
+        choices=['none', 'pytorch', 'slurm', 'mpi'],
+        default='none',
+        help='job launcher')
     # When using PyTorch version >= 2.0.0, the `torch.distributed.launch`
     # will pass the `--local-rank` parameter to `tools/train.py` instead
     # of `--local_rank`.
@@ -47,6 +63,7 @@ def parse_args():
         os.environ['LOCAL_RANK'] = str(args.local_rank)
 
     return args
+
 
 def main():
     args = parse_args()

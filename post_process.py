@@ -113,10 +113,12 @@ def vis_submission(img_dir, submission_path, out_path):
 
 if __name__ == "__main__":
 
-    results_path = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_no_filtering_1/inference_results.json"
+    output_path = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_conf_04/"
     img_dir = "/Stor1/wout/TreeAI4Species/test_submission/12_RGB_ObjDet_640_fL_test_images/images/"
-    out_path_predictions = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_no_filtering_1/predictions.txt"
-    out_path_predictions_vis = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_no_filtering_1/submission_vis"
+
+    results_path = os.path.join(output_path, "inference_results.json")
+    out_path_predictions = os.path.join(output_path, "predictions.txt")
+    out_path_predictions_vis = os.path.join(output_path, "submission_vis")
 
     convert_results(results_path, img_dir, out_path_predictions)
 

@@ -12,50 +12,98 @@ from mmengine.config import Config, ConfigDict
 # hardcoded class_dict
 class_dict = {3: 'picea abies', 6: 'pinus sylvestris', 9: 'larix decidua', 12: 'fagus sylvatica', 13: 'dead tree', 24: 'abies alba', 26: 'pseudotsuga menziesii', 30: 'acer pseudoplatanus', 36: 'fraxinus excelsior', 43: 'acer sp.', 49: 'tilia cordata', 56: 'quercus sp.', 62: 'Tilia platyphyllos', 63: 'Tilia spp', 64: 'Ulmus glabra', 1: 'betula papyrifera', 2: 'tsuga canadensis', 4: 'acer saccharum', 5: 'betula sp.', 7: 'picea rubens', 8: 'betula alleghaniensis', 10: 'fagus grandifolia', 11: 'picea sp.', 14: 'acer pensylvanicum', 15: 'populus balsamifera', 16: 'quercus ilex', 17: 'quercus robur', 18: 'pinus strobus', 19: 'larix laricina', 20: 'larix gmelinii', 21: 'pinus pinea', 22: 'populus grandidentata', 23: 'pinus montezumae', 25: 'betula pendula', 27: 'fraxinus nigra', 28: 'dacrydium cupressinum', 29: 'cedrus libani', 31: 'pinus elliottii', 32: 'cryptomeria japonica', 33: 'pinus koraiensis', 34: 'abies holophylla', 35: 'alnus glutinosa', 37: 'coniferous', 38: 'eucalyptus globulus', 39: 'pinus nigra', 40: 'quercus rubra', 41: 'tilia europaea', 42: 'abies firma', 44: 'metrosideros umbellata', 45: 'acer rubrum', 46: 'picea mariana', 47: 'abies balsamea', 48: 'castanea sativa', 50: 'populus sp.', 51: 'crataegus monogyna', 52: 'quercus petraea', 53: 'acer platanoides', 61: 'salix sp.', 60: 'deciduous', 54: 'robinia pseudoacacia', 58: 'pinus sp.', 57: 'salix alba', 59: 'carpinus sp.'}
 
-def setup_tta_config_fixed(config_path, tta_transforms=None):
-    """Setup TTA configuration"""
+
+def setup_tta_config_fixed(config_path):
     cfg = Config.fromfile(config_path)
     
-    if tta_transforms is None:
-        # Default TTA transforms
-        tta_transforms = [
-            # Horizontal flip
-            [
-                dict(type='RandomFlip', prob=1.0, direction='horizontal')
-            ],
-            # Multi-scale
-            [
-                dict(type='Resize', scale=(512, 512), keep_ratio=True)
-            ],
-            [
-                dict(type='Resize', scale=(768, 768), keep_ratio=True)
-            ],
-            # Combined transforms
-            [
-                dict(type='RandomFlip', prob=1.0, direction='horizontal'),
-                dict(type='Resize', scale=(512, 512), keep_ratio=True)
-            ],
-            [
-                dict(type='RandomFlip', prob=1.0, direction='horizontal'),
-                dict(type='Resize', scale=(768, 768), keep_ratio=True)
-            ], 
-            [
-                dict(type='PackDetInputs')
+    cfg.tta_model = dict(
+        type='DetTTAModel',
+        tta_cfg=dict(
+            nms=dict(type='nms', iou_threshold=0.7),
+            max_per_img=100
+        )
+    )
+    
+    # img_scales = [
+    #     (640, 640),
+    #     (576, 576),
+    #     (704, 704),
+    # ]
+    # cfg.tta_pipeline = [
+    #     dict(type='LoadImageFromFile',
+    #      backend_args=None),
+    #     dict(
+    #         type='TestTimeAug',
+    #         transforms=[
+    #             [
+    #                 dict(type='Resize', scale=scale, keep_ratio=True)
+    #                 for scale in img_scales
+    #             ],
+    #             [
+    #                 dict(type='RandomFlip', prob=0.0),  # No flip
+    #                 dict(type='RandomFlip', prob=1.0, direction='horizontal'),  # Horizontal flip
+    #             ],
+    #             [dict(type='PackDetInputs')]
+    #         ]
+    #     )
+    # ]
+    # try only flips
+    # resize seems to do weird things
+    img_scale = (640, 640)
+    cfg.tta_pipeline = [
+        dict(type='LoadImageFromFile',
+         backend_args=None),
+        dict(
+            type='TestTimeAug',
+            transforms=[
+                [dict(type='Resize', scale=img_scale, keep_ratio=True)],
+                [
+                    dict(type='RandomFlip', prob=0.0),  # No flip
+                    dict(type='RandomFlip', prob=1.0, direction='horizontal'),
+                    dict(type='RandomFlip', prob=1.0, direction='vertical'),
+                ],
+                [dict(type='PackDetInputs')]
             ]
-        ]
+        )
+    ]
+    
+    # mmdetection weirdness
+    cfg.model = ConfigDict(**cfg.tta_model, module=cfg.model)
+    test_data_cfg = cfg.test_dataloader.dataset
+    while 'dataset' in test_data_cfg:
+        test_data_cfg = test_data_cfg['dataset']
+    test_data_cfg.pipeline = cfg.tta_pipeline
+    return cfg
+
+def setup_tta_config(config_path):
+    """Setup TTA configuration"""
+    cfg = Config.fromfile(config_path)
     
     # Setup TTA model wrapper
     cfg.tta_model = dict(
                 type='DetTTAModel',
                 tta_cfg=dict(
                     nms=dict(type='nms', iou_threshold=0.5), max_per_img=100))
+    
+    img_scales = [(512, 512), (768, 768)]
+
     cfg.tta_pipeline = [
     dict(type='LoadImageFromFile',
          backend_args=None),
     dict(
         type='TestTimeAug',
-        transforms=tta_transforms), 
+        transforms=[[
+            dict(type='Resize', scale=s, keep_ratio=True) for s in img_scales
+        ], [
+            dict(type='RandomFlip', prob=1.),
+            dict(type='RandomFlip', prob=0.)
+        ], [
+            dict(
+               type='PackDetInputs')
+       ]])
     ]
+
+    # mmdetection weirdness, copied from demo script
     cfg.model = ConfigDict(**cfg.tta_model, module=cfg.model)
     test_data_cfg = cfg.test_dataloader.dataset
     while 'dataset' in test_data_cfg:
@@ -64,64 +112,6 @@ def setup_tta_config_fixed(config_path, tta_transforms=None):
     test_data_cfg.pipeline = cfg.tta_pipeline
 
     return cfg
-
-def setup_tta_config(config_path, tta_transforms=None):
-    """Setup TTA configuration"""
-    cfg = Config.fromfile(config_path)
-    
-    if tta_transforms is None:
-        # Default TTA transforms
-        tta_transforms = [
-            # Original image
-            dict(type='LoadImageFromFile'),
-            # Horizontal flip
-            [
-                dict(type='LoadImageFromFile'),
-                dict(type='RandomFlip', prob=1.0, direction='horizontal')
-            ],
-            # Multi-scale
-            [
-                dict(type='LoadImageFromFile'),
-                dict(type='Resize', scale=(512, 512), keep_ratio=True)
-            ],
-            [
-                dict(type='LoadImageFromFile'),
-                dict(type='Resize', scale=(768, 768), keep_ratio=True)
-            ],
-            # Combined transforms
-            [
-                dict(type='LoadImageFromFile'),
-                dict(type='RandomFlip', prob=1.0, direction='horizontal'),
-                dict(type='Resize', scale=(512, 512), keep_ratio=True)
-            ],
-            [
-                dict(type='LoadImageFromFile'),
-                dict(type='RandomFlip', prob=1.0, direction='horizontal'),
-                dict(type='Resize', scale=(768, 768), keep_ratio=True)
-            ]
-        ]
-    
-    # Setup TTA model wrapper
-    cfg.model = dict(
-        type='DetTTAWrapper',
-        detector=cfg.model,
-        test_cfg=dict(
-            nms=dict(type='nms', iou_threshold=0.5),
-            max_per_img=100
-        )
-    )
-    
-    # TTA pipeline
-    cfg.test_pipeline = [
-        dict(type='LoadImageFromFile'),
-        dict(
-            type='TestTimeAug',
-            transforms=tta_transforms
-        )
-    ]
-    
-    return cfg
-
 
 def run_inference(config_path, checkpoint_path, test_images_dir, output_dir, 
                   use_tta=True, conf_threshold=0.3, save_visualizations=True):

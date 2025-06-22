@@ -7,6 +7,7 @@ import cv2
 from mmengine.fileio import dump
 from tqdm import tqdm
 import pandas as pd
+import numpy as np
 
 from matplotlib import pyplot as plt
 from matplotlib import patches
@@ -308,7 +309,7 @@ def data_to_coco_format_single(root_dir, output_dir):
     return
 
 # list of classes in format for config files
-def get_list_of_classes():
+def get_classes():
 
     class_file_1 = "/Stor1/wout/TreeAI4Species/ObjDet/5_RGB_S_320_pL/class5_RGB_all_L.xlsx"
     class_file_2 = "/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL/class12_RGB_all_L.xlsx"
@@ -320,16 +321,29 @@ def get_list_of_classes():
     classes_df_3 = pd.read_excel(class_file_3)
     classes_df_4 = pd.read_excel(class_file_4)
 
+    # merge all and keep track of total train count for loss weights
     classes_df_12 = classes_df_1.merge(classes_df_2, how="outer", on=["Sp_ID", "Sp_Class"])
-    classes_df_123 = classes_df_12.merge(classes_df_3, how="outer", on=["Sp_ID", "Sp_Class"], suffixes=["_a", "_b"])
-    classes_df_1234 = classes_df_123.merge(classes_df_4, how="outer", on=["Sp_ID", "Sp_Class"], suffixes=["_A", "_B"])
+    classes_df_12["train"] = classes_df_12["train_x"].fillna(0) + classes_df_12["train_y"].fillna(0)
+    classes_df_12 = classes_df_12.drop(["val_x", "val_y", "train_x", "train_y"], axis=1)
+    classes_df_123 = classes_df_12.merge(classes_df_3, how="outer", on=["Sp_ID", "Sp_Class"])
+    classes_df_123["train"] = classes_df_123["train_x"].fillna(0) + classes_df_123["train_y"].fillna(0)
+    classes_df_123 = classes_df_123.drop(["val", "Label", "train_x", "train_y"], axis=1)
+    classes_df_1234 = classes_df_123.merge(classes_df_4, how="outer", on=["Sp_ID", "Sp_Class"])
+    classes_df_1234["train"] = classes_df_1234["train_x"].fillna(0) + classes_df_1234["train_y"].fillna(0)
+    classes_df_1234 = classes_df_1234.drop(["val", "train_x", "train_y"], axis=1)
 
+    # class list and map
     id_list = classes_df_1234["Sp_ID"].to_numpy()
     classes_list = classes_df_1234["Sp_Class"].to_numpy()
     classes_dict = {id_list[i]: classes_list[i] for i in range(len(id_list))}
 
-    return classes_list, classes_dict
+    # class frequencies
+    total_count = classes_df_1234["train"].sum()
+    classes_df_1234["class_freq"] = classes_df_1234["train"] / total_count
 
+    frequencies = classes_df_1234["class_freq"].to_numpy()
+
+    return classes_list, classes_dict, frequencies
 
 
 if __name__ == "__main__": 
@@ -340,13 +354,14 @@ if __name__ == "__main__":
 
     root_dirs = [root_dir_1, root_dir_2, root_dir_3, root_dir_4]
 
-    classes_list, class_dict = get_list_of_classes()
+    classes_list, class_dict, class_frequencies = get_classes()
 
     print(classes_list)
     print(class_dict)
+    print(repr(class_frequencies))
+    class_weights = 1 / np.log(1.02 + class_frequencies)
+    print(repr(class_weights))
 
     # odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0"
 
     # data_to_coco_format(root_dirs=root_dirs, class_dict=class_dict, output_dir=odir)
-
-    # get_list_of_classes()

@@ -7,16 +7,6 @@
 _base_ = "mmdet::hrnet/cascade-rcnn_hrnetv2p-w18-20e_coco.py"
 
 
-# ===================== MODEL =====================
-model = dict(
-    roi_head=dict(
-        bbox_head=[
-            dict(type='Shared2FCBBoxHead', num_classes=63),
-            dict(type='Shared2FCBBoxHead', num_classes=63),
-            dict(type='Shared2FCBBoxHead',num_classes=63),
-        ]
-    )
-)
 
 # pretrained weights
 load_from = "https://download.openmmlab.com/mmdetection/v2.0/hrnet/cascade_rcnn_hrnetv2p_w18_20e_coco/cascade_rcnn_hrnetv2p_w18_20e_coco_20200210-434be9d7.pth"
@@ -44,6 +34,44 @@ classes = ['picea abies', 'pinus sylvestris', 'larix decidua',
        'castanea sativa', 'populus sp.', 'crataegus monogyna',
        'quercus petraea', 'acer platanoides', 'salix sp.', 'deciduous',
        'robinia pseudoacacia', 'pinus sp.', 'salix alba', 'carpinus sp.']
+class_frequencies = [8.90876430e-02, 5.31485925e-02, 5.09251699e-02, 3.22961549e-02,
+       1.52687578e-01, 2.14177145e-02, 1.03634103e-02, 5.89144171e-03,
+       5.46434359e-03, 1.04136571e-02, 8.66757948e-04, 1.00116824e-02,
+       1.25617094e-05, 3.41678496e-03, 2.51234188e-05, 1.39045561e-01,
+       1.29373045e-01, 5.98565453e-02, 3.00978557e-02, 2.52992827e-02,
+       1.84029043e-02, 1.73225973e-02, 1.66191415e-02, 1.09035638e-02,
+       9.91118871e-03, 6.19292273e-03, 9.92375042e-03, 2.60027385e-03,
+       6.94662530e-03, 8.49171555e-03, 3.51727863e-03, 3.73082769e-03,
+       3.10274222e-03, 5.57739897e-03, 2.82638461e-03, 3.06505709e-03,
+       3.12786564e-03, 2.36160137e-03, 2.96456342e-03, 1.78376273e-03,
+       1.63302222e-03, 2.62539726e-03, 1.97218838e-03, 1.74607761e-03,
+       1.62046051e-03, 2.75101436e-03, 7.91387692e-04, 5.90400342e-04,
+       6.40647179e-04, 9.29566495e-04, 8.29072820e-04, 8.79319658e-04,
+       8.29072820e-04, 4.39659829e-03, 1.49484342e-03, 1.33154120e-03,
+       1.10543043e-03, 1.36922632e-03, 2.22342256e-03, 3.76851282e-04,
+       4.14536410e-04, 2.13549060e-04, 1.63302222e-04]
+# calculated as 1/np.log(1.02 + freq)
+class_weights = [9.65831451, 14.16492045, 14.5936572 , 19.61761705,  6.27753525,
+       24.64087654, 33.4318844 , 39.12067084, 39.76850255, 33.37746898,
+       48.42139205, 33.81789381, 50.4669642 , 43.20248173, 50.43561799,
+        6.77521122,  7.18305065, 13.01605335, 20.45686072, 22.57171291,
+       26.53655699, 27.29036585, 27.80512544, 32.85619129, 33.92984952,
+       38.6760972 , 33.91581394, 44.74538909, 37.60818259, 35.59558056,
+       43.01998971, 42.63732586, 43.78300159, 39.59491228, 44.30707173,
+       43.85372624, 43.73597987, 45.21767352, 44.04346005, 46.40395574,
+       46.72384274, 44.69625455, 46.01026905, 46.48351174, 46.75070133,
+       44.45220951, 48.59512289, 49.06462294, 48.94639075, 48.27757214,
+       48.50810032, 48.39255885, 48.50810032, 41.48731243, 47.02101374,
+       47.37717921, 47.87943015, 47.29450404, 45.49573778, 49.57361461,
+       49.48301879, 49.97009988, 50.09338735]
+# extra weight for background class (seems to be necessary)
+# set to lowest value of class_weights
+class_weights += [1.0]
+# normalize class weights (also seems to be necessary)
+s = sum(class_weights)
+class_weights = [w/s for w in class_weights]
+
+
 metainfo=dict(classes=classes)
 
 img_scale = (640, 640)
@@ -51,7 +79,25 @@ train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='Resize', scale=img_scale, keep_ratio=True),
+    # augmentations
+    dict(
+        type='RandomCrop',
+        crop_size=(480, 480)
+    ),
     dict(type='RandomFlip', prob=0.5),
+    dict(
+        type='PhotoMetricDistortion',
+        brightness_delta=32,
+        contrast_range=(0.5, 1.5),
+        saturation_range=(0.5, 1.5),
+        hue_delta=18
+    ),
+    # cutout should help a lot with occluded trees
+    dict(
+        type='CutOut',
+        n_holes = (0,3),
+        cutout_ratio=[(0.05, 0.05), (0.10, 0.10), (0.07, 0.07)]
+    ),
     dict(type='PackDetInputs')
 ]
 test_pipeline = [
@@ -62,8 +108,15 @@ test_pipeline = [
 ]
 
 train_dataloader = dict(
-    batch_size=8,
+    batch_size=16,
     num_workers=4,
+    # weighted random sampler (custom module), image are weighted by sum of class weights of unique labels in image
+    sampler=dict(
+        _delete_=True,
+        type='WeightedRandomSamplerMod',
+        class_weights=class_weights,
+        replacement=True
+    ),
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
@@ -89,6 +142,45 @@ val_dataloader = dict(
 )
 
 test_dataloader = val_dataloader
+
+# ===================== MODEL =====================
+model = dict(
+    roi_head=dict(
+        bbox_head=[
+            dict(
+                type='Shared2FCBBoxHead', 
+                num_classes=63,
+                loss_cls=dict(
+                    type='CrossEntropyLoss',
+                    use_sigmoid=False,
+                    class_weight=class_weights,
+                    loss_weight=1.0
+                )
+            ),
+            dict(
+                type='Shared2FCBBoxHead', 
+                num_classes=63,
+                loss_cls=dict(
+                    type='CrossEntropyLoss',
+                    use_sigmoid=False,
+                    class_weight=class_weights,
+                    loss_weight=1.0
+                )
+            ),
+            dict(
+                type='Shared2FCBBoxHead', 
+                num_classes=63,
+                loss_cls=dict(
+                    type='CrossEntropyLoss',
+                    use_sigmoid=False,
+                    class_weight=class_weights,
+                    loss_weight=1.0
+                )
+            ),
+        ]
+    )
+)
+
 
 # ===================== EVALUATION =====================
 val_evaluator = dict(type='CocoMetric', ann_file=data_root + 'annotations/instances_val.json', metric='bbox', format_only=False)
