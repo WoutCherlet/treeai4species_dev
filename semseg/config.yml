@@ -1,6 +1,6 @@
 n_classes: 62
-num_epochs: 200
-batch_size: 2
+num_epochs: 50
+batch_size: 6
 max_lr: 0.001
 loss_name: 'custom'
 model_path: '/Stor1/wouter/treeai4species/trained_models/segformer_mitb5_comboloss_datasampling'
