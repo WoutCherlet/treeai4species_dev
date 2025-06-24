@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import segmentation_models_pytorch as smp
 from sklearn.metrics import confusion_matrix
+import albumentations as A
 
 # Import own functionality
 from utils import *
@@ -40,6 +41,12 @@ def main(config):
     # Set device
     device = torch.device('cuda:0') if torch.cuda.is_available() else 'cpu'
 
+    # Transform
+    infer_transform = A.Compose([
+        A.Normalize(), # mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        A.ToTensorV2(),
+    ]) 
+
     # Training dataset
     print('Loading training set ...')
     dataset = MyDataset(
@@ -51,6 +58,7 @@ def main(config):
             'full',
             'partial',
         ],
+        transform=infer_transform
     )
 
     print('Loading validation set ...')

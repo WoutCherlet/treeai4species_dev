@@ -16,6 +16,7 @@ from torch.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import OneCycleLR
 import segmentation_models_pytorch as smp
 from sklearn.metrics import confusion_matrix
+import albumentations as A
 
 # Import own functionality
 from utils import *
@@ -82,8 +83,9 @@ def train_model(
             'Lovasz': f"{loss_dict['lovasz']:.4f}"
           })
       
-      # Validation every 2 epochs
-      if epoch % 2 == 0:
+      # Validation every x epochs
+      val_interval = 1
+      if epoch % val_interval == 0:
         cm_val = eval_confusion_matrix(val_loader, model, device, n_classes)
         iou_val_new = np.mean(compute_iou(cm_val))
         if iou_val_new > iou_val:
@@ -110,6 +112,26 @@ def main(config):
     # Set device
     device = torch.device('cuda:0') if torch.cuda.is_available() else 'cpu'
 
+    # Transforms
+    train_transform = A.Compose([
+        A.SquareSymmetry(p=1.0),
+        A.CoarseDropout(num_holes_range=(1,8), hole_height_range=(16, 32),
+                        hole_width_range=(16, 32), fill=0, fill_mask=None, p=0.4),
+        A.RandomBrightnessContrast(p=0.1),
+        A.OneOf([
+            A.GaussianBlur(blur_limit=(3, 7), p=0.5),
+            A.MedianBlur(blur_limit=5, p=0.5),
+            A.MotionBlur(blur_limit=(3, 7), p=0.5),
+        ], p=0.1),
+        A.GaussNoise(std_range=(0.1, 0.2), p=0.2),
+        A.Normalize(), #mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), normalization='image'
+        A.ToTensorV2(),
+    ])
+    val_transform = A.Compose([
+        A.Normalize(),
+        A.ToTensorV2(),
+    ]) 
+
     # Training dataset
     dataset = MyDataset(
         paths=[
@@ -120,6 +142,7 @@ def main(config):
             'full',
             'partial',
         ],
+        transform=train_transform,
     )
 
     # Validation set
@@ -131,6 +154,7 @@ def main(config):
             'full',
             'partial',
         ],
+        transform=val_transform,
     )
 
     # Get class counts

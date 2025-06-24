@@ -24,10 +24,11 @@ def parse_config(path):
 
 
 class MyDataset(Dataset):
-  def __init__(self, paths, labels='full', mode='train'):
+  def __init__(self, paths, labels='full', mode='train', transform=None):
     self.path = [paths] if not isinstance(paths, list) else paths
     self.labels = [labels] if not isinstance(labels, list) else labels
     self.mode = mode
+    self.transform = transform
     self.images, self.masks = self._read_dataset() 
 
   def __len__(self):
@@ -56,12 +57,17 @@ class MyDataset(Dataset):
 
   def __getitem__(self, idx):
     image = self.images[idx]
-    image = np.moveaxis(image, -1, 0).astype(np.float32) / 255
+    # image = np.moveaxis(image, -1, 0).astype(np.float32) / 255
 
     if self.mode == 'infer':
+      image = self.transform(image=image)['image'] if self.transform else image
       return image
     else:
-      mask = self.masks[idx].astype(np.int64)
+      mask = self.masks[idx]
+      if self.transform:
+          augmented = self.transform(image=image, mask=mask)
+          image = augmented['image']
+          mask = augmented['mask'].long()
       return image, mask
 
 
@@ -228,8 +234,8 @@ class CustomLoss:
 
         # Combined
         total_loss = (
-            0.5 * cce_loss +  
-            0.3 * cce_tree_loss +  
+            0.3 * cce_loss +  
+            0.1 * cce_tree_loss +  
             1 * lovasz_loss  
         )
 
