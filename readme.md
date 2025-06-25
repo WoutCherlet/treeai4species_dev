@@ -6,6 +6,7 @@
 - different config files for original and 
 - dependencies file for albumentations, pillow etc.
 - adapt text to reflect final training and models
+- add trained checkpoints in 
 
 Code and documentation for TreeAI4Species submissions, for both the object detection and semantic segmentation tracks.  
 Instructions for installation, preprocessing, training and a description of model are described below for both tracks
@@ -17,24 +18,33 @@ Instructions for installation, preprocessing, training and a description of mode
 We use mmdetection (v3.3.0) as the framework for object detection.
 We used python v3.9, pytorch v2.5.1 with cuda v12.4.
 
-To install, follow the instructions [here](https://mmdetection.readthedocs.io/en/latest/get_started.html).
-
-
+To install, follow the instructions [here](https://mmdetection.readthedocs.io/en/latest/get_started.html).  
+> Note: you may need to adapt line 9 in mmdetection/mmdet/__init__.py to 
+```python
+mmcv_maximum_version = '2.2.1'
+```
 ## Data preprocessing
 
-Due to time constraints and the need for manual filtering, as well as the 3 classes already being well represented, the 0_RGB_fL data subset was not used.
-
-The other first subset are merged, converted to coco format and a final class list and mapping are extracted.
-Mean RGB and std values are extracted from the dataset.
-(Some of the class information has been manually copied to the configuration file)
+Due to time constraints and the need for manual filtering, as well as the 3 classes already being well represented, the 0_RGB_fL data subset was not used. The other four subset are merged, converted to coco format and a final class list and mapping are extracted.  
+Mean RGB and std values were extracted from the dataset.
 
 ## Training model
 
 The model is trained using:
-
+```
 python train.py mmdetection_cfgs/cascade_rcnn_hrnetv2p_w18.py
-
+```
 TODO finetuning run here, get different config so command is easy
+
+## Inference
+
+Run inference with the following command:
+```
+python inference.py --config [config_path] --checkpoint [ckpt_path] --test_dir [dir with test images] --output_dir [output dir] --conf_threshold [conf threshold]
+```
+Afterwards, convert the data to submission format and labels (mmdetection internal labels are different!):
+
+TODO script for this
 
 
 ## Description of model
