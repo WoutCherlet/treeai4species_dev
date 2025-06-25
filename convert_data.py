@@ -5,8 +5,6 @@ import numpy as np
 
 from PIL import Image
 
-# TODO: also check if semantic segmentation data is the same pictures as object detection
-
 # NOTES:
 
 # 5_RGB_S_320_pL:

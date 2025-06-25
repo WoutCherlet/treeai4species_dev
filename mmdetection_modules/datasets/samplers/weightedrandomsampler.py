@@ -24,8 +24,13 @@ class WeightedRandomSamplerMod(WeightedRandomSampler):
                 sample_weight = 1
             else:
                 unique_labels = np.unique(all_labels_img)
+                # sum of weights
                 sample_weight = class_weights[unique_labels].sum()
+                # max of weights
+                # sample_weight = class_weights[unique_labels].max()
 
             sample_weights.append(sample_weight)
         
         super().__init__(sample_weights, len(dataset), replacement=replacement)
+
+        

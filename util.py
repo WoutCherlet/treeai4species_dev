@@ -9,6 +9,7 @@ from tqdm import tqdm
 import pandas as pd
 import numpy as np
 
+from PIL import Image
 from matplotlib import pyplot as plt
 from matplotlib import patches
 
@@ -346,22 +347,91 @@ def get_classes():
     return classes_list, classes_dict, frequencies
 
 
+# get rgb and mean of dataset
+def compute_rgb_mean_std(image_dir, exts=('.tif', '.png'), max_images=None):
+    """
+    Compute the per-channel RGB mean and standard deviation of all images in a directory.
+
+    Parameters
+    ----------
+    image_dir : str
+        Path to the directory containing images.
+    exts : tuple of str
+        Valid image file extensions.
+    max_images : int or None
+        Maximum number of images to process (for speed). Use None to process all.
+
+    Returns
+    -------
+    mean : tuple of float
+        Mean of R, G, B channels.
+    std : tuple of float
+        Std of R, G, B channels.
+    """
+
+    image_paths = []
+    for ext in exts:
+        image_paths.extend(glob.glob(os.path.join(image_dir, f'*{ext}')))
+
+    if max_images is not None:
+        image_paths = image_paths[:max_images]
+
+    if len(image_paths) == 0:
+        print("no images found")
+        return
+
+    # Accumulators
+    channel_sum = np.zeros(3)
+    channel_squared_sum = np.zeros(3)
+    pixel_count = 0
+
+    for path in tqdm(image_paths, desc="processing images"):
+        with Image.open(path) as img:
+            img = img.convert("RGB")
+            img_np = np.array(img).astype(np.float32) / 255.0  # normalize to [0, 1]
+        
+        h, w, c = img_np.shape
+        pixel_count += h * w
+
+        channel_sum += img_np.sum(axis=(0, 1))
+        channel_squared_sum += (img_np ** 2).sum(axis=(0, 1))
+
+    mean = channel_sum / pixel_count
+    std = np.sqrt(channel_squared_sum / pixel_count - mean ** 2)
+
+    # back to range (0,255)
+    return tuple(mean*255), tuple(std*255)
+
+
 if __name__ == "__main__": 
-    root_dir_1 = "/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL"
-    root_dir_2 = "/Stor1/wout/TreeAI4Species/ObjDet/5_RGB_S_320_pL"
-    root_dir_3 = "/Stor1/wout/TreeAI4Species/ObjDet/34_RGB_ObjDet_640_pL_a/34_RGB_ObjDet_640_pL"
-    root_dir_4 = "/Stor1/wout/TreeAI4Species/ObjDet/34_RGB_ObjDet_640_pL_b"
 
-    root_dirs = [root_dir_1, root_dir_2, root_dir_3, root_dir_4]
+    # get all classes, with mapping and frequencies
 
-    classes_list, class_dict, class_frequencies = get_classes()
+    # root_dir_1 = "/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL"
+    # root_dir_2 = "/Stor1/wout/TreeAI4Species/ObjDet/5_RGB_S_320_pL"
+    # root_dir_3 = "/Stor1/wout/TreeAI4Species/ObjDet/34_RGB_ObjDet_640_pL_a/34_RGB_ObjDet_640_pL"
+    # root_dir_4 = "/Stor1/wout/TreeAI4Species/ObjDet/34_RGB_ObjDet_640_pL_b"
 
-    print(classes_list)
-    print(class_dict)
-    print(repr(class_frequencies))
-    class_weights = 1 / np.log(1.02 + class_frequencies)
-    print(repr(class_weights))
+    # root_dirs = [root_dir_1, root_dir_2, root_dir_3, root_dir_4]
+
+    # classes_list, class_dict, class_frequencies = get_classes()
+
+    # print(classes_list)
+    # print(class_dict)
+    # print(repr(class_frequencies))
+    # class_weights = 1 / np.log(1.02 + class_frequencies)
+    # print(repr(class_weights))
+
+    # convert to coco format
 
     # odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0"
 
     # data_to_coco_format(root_dirs=root_dirs, class_dict=class_dict, output_dir=odir)
+
+    # get mean and std of training set
+    # img_dir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0/train/images/"
+    img_dir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/12_RGB_ObjDet_640_fL/train/images/"
+    mean, std = compute_rgb_mean_std(img_dir)
+
+    print(f"\nRGB Mean: {mean}")
+    print(f"RGB Std:  {std}")
