@@ -147,7 +147,7 @@ def data_to_coco_format(root_dirs, class_dict, output_dir, masked_as_gt=False):
                 # Copy image to output folder with unique name
                 shutil.copy(img_path, os.path.join(output_img_dir, unique_fname))
 
-                if masked_images and not masked_as_gt:
+                if not masked_as_gt and masked_images:
                     # also copy masked image
                     shutil.copy(os.path.join(split_img_masked, fname_original), os.path.join(output_masked_img_dir, unique_fname))
                 
@@ -170,12 +170,10 @@ def data_to_coco_format(root_dirs, class_dict, output_dir, masked_as_gt=False):
                         class_id, x_c, y_c, w, h = map(float, parts)
                         class_id = int(class_id)
                         
-                        # Check if class_id exists in the provided class dictionary
                         if class_id not in class_dict:
                             print(f"Warning: class_id {class_id} not found in class_dict, skipping annotation.")
                             continue
                         
-                        # Convert normalized YOLO format to absolute COCO format
                         abs_x = (x_c - w / 2) * width
                         abs_y = (y_c - h / 2) * height
                         abs_w = w * width
@@ -188,7 +186,7 @@ def data_to_coco_format(root_dirs, class_dict, output_dir, masked_as_gt=False):
                             "bbox": [abs_x, abs_y, abs_w, abs_h],
                             "area": abs_w * abs_h,
                             "iscrowd": 0,
-                            "segmentation": []  # not available from bounding boxes
+                            "segmentation": []
                         }
                         annotations.append(annotation)
                         ann_id += 1
@@ -200,7 +198,17 @@ def data_to_coco_format(root_dirs, class_dict, output_dir, masked_as_gt=False):
     # Process both splits
     for split in ["train", "val"]:
         images, annotations = process_split(split)
+        # stubbed info and licenses
+        info = { "year": 2025,
+        "version": "1",
+        "description": "treeai4species coco format",
+        "contributor": "Wout Cherlet",
+        "url": "https://github.com/WoutCherlet/treeai4species_dev",
+        "date_created": "2000-01-01T00:00:00+00:00"}
+        licenses = [{"id": 1, "url": "https://creativecommons.org/publicdomain/zero/1.0/", "name": "Public Domain"}]
         coco_dict = {
+            "info": info,
+            "licenses": licenses,
             "images": images,
             "annotations": annotations,
             "categories": categories
@@ -216,7 +224,7 @@ def data_to_coco_format(root_dirs, class_dict, output_dir, masked_as_gt=False):
     
     return
 
-def data_to_coco_format_single(root_dir, output_dir):
+def data_to_coco_format_single(root_dir, class_dict, output_dir):
     """
     Convert data from multiple root directories to COCO format.
     
@@ -230,11 +238,13 @@ def data_to_coco_format_single(root_dir, output_dir):
     os.makedirs(os.path.join(output_dir, "val", "images"), exist_ok=True)
     os.makedirs(os.path.join(output_dir, "annotations"), exist_ok=True)
 
-    # load classes from excel file
-    # TODO: works now only for 12_RGB_...
-    class_file = os.path.join(root_dir, "class12_RGB_all_L.xlsx")
-    classes_df = pd.read_excel(class_file)
-    classes = [{"id": int(row["Sp_ID"]), "name": row["Sp_Class"]} for _,row in classes_df.iterrows()]
+    # load classes from excel file.
+    # class_file = os.path.join(root_dir, "class12_RGB_all_L.xlsx")
+    # classes_df = pd.read_excel(class_file)
+    # classes = [{"id": int(row["Sp_ID"]), "name": row["Sp_Class"]} for _,row in classes_df.iterrows()]
+
+    # Convert class dictionary to COCO categories format
+    categories = [{"id": int(class_id), "name": class_name} for class_id, class_name in class_dict.items()]
 
     def process_split(split):
         image_id = 0
@@ -255,10 +265,8 @@ def data_to_coco_format_single(root_dir, output_dir):
                 continue
             height, width = img.shape[:2]
 
-            # Copy image to output folder
             shutil.copy(img_path, os.path.join(output_img_dir, fname))
 
-            # Add image entry
             images.append({
                 "id": image_id,
                 "file_name": fname,
@@ -266,7 +274,6 @@ def data_to_coco_format_single(root_dir, output_dir):
                 "height": height
             })
 
-            # Read label
             with open(label_path, "r") as f:
                 for line in f:
                     parts = line.strip().split()
@@ -276,7 +283,7 @@ def data_to_coco_format_single(root_dir, output_dir):
 
                     class_id, x_c, y_c, w, h = map(float, parts)
                     class_id = int(class_id)
-                    # Convert to absolute COCO format
+
                     abs_x = (x_c - w / 2) * width
                     abs_y = (y_c - h / 2) * height
                     abs_w = w * width
@@ -289,7 +296,7 @@ def data_to_coco_format_single(root_dir, output_dir):
                         "bbox": [abs_x, abs_y, abs_w, abs_h],
                         "area": abs_w * abs_h,
                         "iscrowd": 0,
-                        "segmentation": []  # not available from bounding boxes
+                        "segmentation": []
                     }
                     annotations.append(annotation)
                     ann_id += 1
@@ -300,10 +307,19 @@ def data_to_coco_format_single(root_dir, output_dir):
     # Process both splits
     for split in ["train", "val"]:
         images, annotations = process_split(split)
+        info = { "year": 2025,
+        "version": "1",
+        "description": "treeai4species coco format",
+        "contributor": "Wout Cherlet",
+        "url": "https://github.com/WoutCherlet/treeai4species_dev",
+        "date_created": "2000-01-01T00:00:00+00:00"}
+        licenses = [{"id": 1, "url": "https://creativecommons.org/publicdomain/zero/1.0/", "name": "Public Domain"}]
         coco_dict = {
+            "info": info,
+            "licenses": licenses,
             "images": images,
             "annotations": annotations,
-            "categories": classes
+            "categories": categories
         }
         ann_file = os.path.join(output_dir, "annotations", f"instances_{split}.json")
         dump(coco_dict, ann_file)
@@ -409,14 +425,14 @@ if __name__ == "__main__":
 
     # get all classes, with mapping and frequencies
 
-    # root_dir_1 = "/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL"
-    # root_dir_2 = "/Stor1/wout/TreeAI4Species/ObjDet/5_RGB_S_320_pL"
-    # root_dir_3 = "/Stor1/wout/TreeAI4Species/ObjDet/34_RGB_ObjDet_640_pL_a/34_RGB_ObjDet_640_pL"
-    # root_dir_4 = "/Stor1/wout/TreeAI4Species/ObjDet/34_RGB_ObjDet_640_pL_b"
+    root_dir_1 = "/Stor1/wout/TreeAI4Species/ObjDet/12_RGB_ObjDet_640_fL"
+    root_dir_2 = "/Stor1/wout/TreeAI4Species/ObjDet/5_RGB_S_320_pL"
+    root_dir_3 = "/Stor1/wout/TreeAI4Species/ObjDet/34_RGB_ObjDet_640_pL_a/34_RGB_ObjDet_640_pL"
+    root_dir_4 = "/Stor1/wout/TreeAI4Species/ObjDet/34_RGB_ObjDet_640_pL_b"
 
-    # root_dirs = [root_dir_1, root_dir_2, root_dir_3, root_dir_4]
+    root_dirs = [root_dir_1, root_dir_2, root_dir_3, root_dir_4]
 
-    # classes_list, class_dict, class_frequencies = get_classes()
+    classes_list, class_dict, class_frequencies = get_classes()
 
     # print(classes_list)
     # print(class_dict)
@@ -426,14 +442,19 @@ if __name__ == "__main__":
 
     # convert to coco format
 
-    # odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0"
+    # odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0_masked_images_as_gt"
 
-    # data_to_coco_format(root_dirs=root_dirs, class_dict=class_dict, output_dir=odir)
+    # data_to_coco_format(root_dirs=root_dirs, class_dict=class_dict, output_dir=odir, masked_as_gt=True)
+
+    # only for 12_rgb
+
+    odir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/12_RGB_ObjDet_640_fL"
+    data_to_coco_format_single(root_dir_1, class_dict, odir)
 
     # get mean and std of training set
     # img_dir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0/train/images/"
-    img_dir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/12_RGB_ObjDet_640_fL/train/images/"
-    mean, std = compute_rgb_mean_std(img_dir)
+    # img_dir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/12_RGB_ObjDet_640_fL/train/images/"
+    # mean, std = compute_rgb_mean_std(img_dir)
 
-    print(f"\nRGB Mean: {mean}")
-    print(f"RGB Std:  {std}")
+    # print(f"\nRGB Mean: {mean}")
+    # print(f"RGB Std:  {std}")
