@@ -61,7 +61,7 @@ def plot_image_with_boxes(image_file, label_file):
     return 
 
 # for all datasets
-def data_to_coco_format(root_dirs, class_dict, output_dir):
+def data_to_coco_format(root_dirs, class_dict, output_dir, masked_as_gt=False):
     """
     Convert data from multiple root directories to COCO format.
     
@@ -69,6 +69,7 @@ def data_to_coco_format(root_dirs, class_dict, output_dir):
         root_directories: List of root directory paths, each containing train/val folders
         class_dict: Dictionary mapping class IDs to class names {id: name}
         output_dir: Output directory for the combined COCO dataset
+        masked_as_gt: if true, writes masked image as the gt image
     """
     # Create output directories
     os.makedirs(os.path.join(output_dir, "train", "images"), exist_ok=True)
@@ -85,26 +86,27 @@ def data_to_coco_format(root_dirs, class_dict, output_dir):
         annotations = []
         
         output_img_dir = os.path.join(output_dir, split, "images")
-        output_masked_img_dir = os.path.join(output_dir, split, "masked_images")
         if not os.path.exists(output_img_dir):
             os.makedirs(output_img_dir)
-        if not os.path.exists(output_masked_img_dir):
-            os.makedirs(output_masked_img_dir)
+        if not masked_as_gt:
+            output_masked_img_dir = os.path.join(output_dir, split, "masked_images")
+            if not os.path.exists(output_masked_img_dir):
+                os.makedirs(output_masked_img_dir)
         
         # Process each root directory
         for root_dir in root_dirs:
             split_img_dir = os.path.join(root_dir, split, "images")
 
-            # if masked images exist, also copy them to seperate directory
             split_img_masked = os.path.join(root_dir, split, "images_masked")
-            masked_images = False
-            if os.path.exists(split_img_masked):
-                masked_images = True
-
-            # TODO: TEMP: masked images as gt
-            # split_img_masked = os.path.join(root_dir, split, "images_masked")
-            # if os.path.exists(split_img_masked):
-            #     split_img_dir = split_img_masked
+            if masked_as_gt:
+                # write masked images as input images
+                if os.path.exists(split_img_masked):
+                    split_img_dir = split_img_masked
+            else:
+                # write masked images to seperate folder
+                masked_images = False
+                if os.path.exists(split_img_masked):
+                    masked_images = True
 
             split_lbl_dir = os.path.join(root_dir, split, "labels")
             
@@ -145,7 +147,7 @@ def data_to_coco_format(root_dirs, class_dict, output_dir):
                 # Copy image to output folder with unique name
                 shutil.copy(img_path, os.path.join(output_img_dir, unique_fname))
 
-                if masked_images:
+                if masked_images and not masked_as_gt:
                     # also copy masked image
                     shutil.copy(os.path.join(split_img_masked, fname_original), os.path.join(output_masked_img_dir, unique_fname))
                 
