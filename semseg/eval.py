@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import segmentation_models_pytorch as smp
 from sklearn.metrics import confusion_matrix
+import albumentations as A
 
 # Import own functionality
 from utils import *
@@ -36,9 +37,30 @@ def main(config):
     batch_size = config.get("batch_size", 5)
     model_path = config.get("model_path", './model')
     data_paths = config.get("data_paths")
+    normalize = config.get("normalize", 'imagenet')
 
     # Set device
     device = torch.device('cuda:0') if torch.cuda.is_available() else 'cpu'
+
+    # Set normalization arguments
+    if normalize['mode'] == 'custom':
+        norm_kwargs = {
+            'mean': normalize['mean'],
+            'std': normalize['std'],
+        }
+    elif normalize['mode'] == 'imagenet':
+        norm_kwargs = {
+            'mean': (0.485, 0.456, 0.406),
+            'std': (0.229, 0.224, 0.225),
+        }
+    elif normalize['mode'] == 'image':
+        norm_kwargs = {'normalization': 'image'}
+
+    # Transform
+    transform = A.Compose([
+        A.Normalize(**norm_kwargs), # mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        A.ToTensorV2(),
+    ]) 
 
     # Training dataset
     print('Loading training set ...')
@@ -51,6 +73,7 @@ def main(config):
             'full',
             'partial',
         ],
+        transform=transform
     )
 
     print('Loading validation set ...')
@@ -63,6 +86,7 @@ def main(config):
             'full',
             'partial',
         ],
+        transform=transform,
     )
 
     train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False)
@@ -75,10 +99,9 @@ def main(config):
     # Calculate IoU
     print('Evaluating on training set')
     evaluate(train_loader, model, device, n_classes)
-    plot_predictions(dataset, model, device, n=1)
+
     print('Evaluating on validation set')
     evaluate(val_loader, model, device, n_classes)
-    plot_predictions(dataset_val, model, device, n=1)
     
 
 if __name__ == "__main__":

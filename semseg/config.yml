@@ -1,9 +1,14 @@
 n_classes: 62
-num_epochs: 200
-batch_size: 2
-max_lr: 0.001
+num_epochs: 50
+batch_size: 8
+max_lr: 0.0001
+normalize:
+    mode: 'custom' # 'custom', 'imagenet' or 'image'
+    mean: [0.332116, 0.37181628, 0.2666544]
+    std: [0.24709152, 0.25703186, 0.22342621]
 loss_name: 'custom'
-model_path: '/Stor1/wouter/treeai4species/trained_models/segformer_mitb5_comboloss_datasampling'
+start_checkpoint: '/Stor1/wouter/treeai4species/trained_models/segformer_mitb5_comboloss_datasampling_norm-custom_augment'
+model_path: '/Stor1/wouter/treeai4species/trained_models/segformer_mitb5_comboloss_datasampling_norm-custom_augment_with-validation'
 model_name: 'segformer'
 data_paths:
     path_root: '/Stor1/wout/TreeAI4Species/SemSeg/'
@@ -17,4 +22,4 @@ data_paths:
         path_val: '/Stor1/wout/TreeAI4Species/SemSeg/34_RGB_SemSegm_640_pL/val/'
     data_test:
         path_test: '/Stor1/wout/TreeAI4Species/test_submission/SemSeg_test-images/'
-        path_prediction: '/Stor1/wout/TreeAI4Species/test_submission/SemSeg_test-images/predictions/'
+        path_prediction: '/Stor1/wout/TreeAI4Species/test_submission/SemSeg_test-images/predictions_last_run/'
