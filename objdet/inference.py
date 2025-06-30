@@ -9,7 +9,7 @@ from mmdet.apis import init_detector, inference_detector
 from mmdet.utils import register_all_modules
 from mmengine.config import Config, ConfigDict
 
-# hardcoded class_dict
+
 class_dict = {3: 'picea abies', 6: 'pinus sylvestris', 9: 'larix decidua', 12: 'fagus sylvatica', 13: 'dead tree', 24: 'abies alba', 26: 'pseudotsuga menziesii', 30: 'acer pseudoplatanus', 36: 'fraxinus excelsior', 43: 'acer sp.', 49: 'tilia cordata', 56: 'quercus sp.', 62: 'Tilia platyphyllos', 63: 'Tilia spp', 64: 'Ulmus glabra', 1: 'betula papyrifera', 2: 'tsuga canadensis', 4: 'acer saccharum', 5: 'betula sp.', 7: 'picea rubens', 8: 'betula alleghaniensis', 10: 'fagus grandifolia', 11: 'picea sp.', 14: 'acer pensylvanicum', 15: 'populus balsamifera', 16: 'quercus ilex', 17: 'quercus robur', 18: 'pinus strobus', 19: 'larix laricina', 20: 'larix gmelinii', 21: 'pinus pinea', 22: 'populus grandidentata', 23: 'pinus montezumae', 25: 'betula pendula', 27: 'fraxinus nigra', 28: 'dacrydium cupressinum', 29: 'cedrus libani', 31: 'pinus elliottii', 32: 'cryptomeria japonica', 33: 'pinus koraiensis', 34: 'abies holophylla', 35: 'alnus glutinosa', 37: 'coniferous', 38: 'eucalyptus globulus', 39: 'pinus nigra', 40: 'quercus rubra', 41: 'tilia europaea', 42: 'abies firma', 44: 'metrosideros umbellata', 45: 'acer rubrum', 46: 'picea mariana', 47: 'abies balsamea', 48: 'castanea sativa', 50: 'populus sp.', 51: 'crataegus monogyna', 52: 'quercus petraea', 53: 'acer platanoides', 61: 'salix sp.', 60: 'deciduous', 54: 'robinia pseudoacacia', 58: 'pinus sp.', 57: 'salix alba', 59: 'carpinus sp.'}
 
 
@@ -192,7 +192,7 @@ def run_inference(config_path, checkpoint_path, test_images_dir, output_dir,
                 'bbox': bbox.tolist(),  # [x1, y1, x2, y2]
                 'score': float(score),
                 # 'class_id': int(label),
-                'class_id': int(label)+1, # new version: labels already converted back but of by one???
+                'class_id': int(label)+1, # new version: labels already converted back but of by one
                 'class_name': classes[label]
             }
             img_results['detections'].append(detection)

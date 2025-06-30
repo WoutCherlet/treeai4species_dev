@@ -198,7 +198,7 @@ def convert_results(results_path, img_dir, output_path):
             # species ID is actually different from class ID!! class ID is label determined by COCO, which is converted to start at 0 in the order that categories is given in the annotation.json file
             # so to convert back, just index the same dict that is in the categories file and use the key
             # species = species_ids[class_id]
-            # NEW VERSION: ALREADY CORRECT!
+            # NEW VERSION: ALREADY CORRECT - reinstalled mmdet from source?
             species = class_id
             conf = detection["score"]
             # get center coords and width and height of preds

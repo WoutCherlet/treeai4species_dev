@@ -3,10 +3,9 @@ _base_ = "mmdet::hrnet/cascade-rcnn_hrnetv2p-w18-20e_coco.py"
 # pretrained weights
 load_from = "https://download.openmmlab.com/mmdetection/v2.0/hrnet/cascade_rcnn_hrnetv2p_w18_20e_coco/cascade_rcnn_hrnetv2p_w18_20e_coco_20200210-434be9d7.pth"
 
-# load_from = "/home/wcherlet/TreeAI4Species/treeai4species_dev/work_dirs/cascade_rcnn_hrnetv2p_w18/20250619_170024/best_coco_bbox_mAP_50_epoch_35.pth"
-
 # ===================== DATASET =====================
 dataset_type = 'CocoDataset'
+# ADAPT: data root (as used in data preprocessing notebook)
 data_root = '/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0_masked_images_as_gt/'
 classes = ['picea abies', 'pinus sylvestris', 'larix decidua',
        'fagus sylvatica', 'dead tree', 'abies alba',
@@ -73,7 +72,6 @@ metainfo=dict(classes=classes)
 
 img_scale = (640, 640)
 
-
 albu_train_transforms = [
     dict(type="SquareSymmetry", p=1.0),
     dict(
@@ -110,19 +108,8 @@ train_pipeline = [
             'gt_bboxes': 'bboxes'
         },
         skip_img_without_anno=True),
-    # do cutout seperatly, cutout in albu creates errors (due to bboxs being filtered out and not being handled by mmdetection -____-)
-    # dict(type="CutOut",
-    #     cutout_ratio=[(0.05, 0.05), (0.01, 0.01), (0.03, 0.03)],
-    #     n_holes=(0,3)),
     dict(type='PackDetInputs')
 ]
-# train_pipeline = [
-#     dict(type='LoadImageFromFile'),
-#     dict(type='LoadAnnotations', with_bbox=True),
-#     dict(type='Resize', scale=img_scale, keep_ratio=True),
-#     dict(type='RandomFlip', prob=0.5),
-#     dict(type='PackDetInputs')
-# ]
 
 
 test_pipeline = [
@@ -220,7 +207,7 @@ test_evaluator = val_evaluator
 # ===================== TRAINING =====================
 # train_cfg = dict(max_epochs=50, val_interval=1)
 # for finetuning with load_from: extra number of epochs here
-train_cfg = dict(max_epochs=40, val_interval=1)
+train_cfg = dict(max_epochs=36, val_interval=1)
 
 val_cfg = dict(type='ValLoop')  # The validation loop type
 test_cfg = dict(type='TestLoop')  # The testing loop type
@@ -230,11 +217,6 @@ optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
 )
-# for resuming: lower lr
-# optim_wrapper = dict(
-#     type='OptimWrapper',
-#     optimizer=dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0001)
-# )
 
 # ===================== LOGGING =====================
 default_hooks = dict(

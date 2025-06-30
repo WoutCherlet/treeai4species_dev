@@ -5,6 +5,7 @@ load_from = "/home/wcherlet/TreeAI4Species/treeai4species_dev/work_dirs/cascade_
 
 # ===================== DATASET =====================
 dataset_type = 'CocoDataset'
+# ADAPT: data root (as used in data preprocessing notebook)
 data_root = '/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0_masked_images_as_gt/'
 classes = ['picea abies', 'pinus sylvestris', 'larix decidua',
        'fagus sylvatica', 'dead tree', 'abies alba',
