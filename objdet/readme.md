@@ -9,20 +9,22 @@
 - add trained checkpoints in 
 
 Code and documentation for TreeAI4Species submissions, for both the object detection and semantic segmentation tracks.  
-Instructions for installation, preprocessing, training and a description of model are described below for both tracks
+Instructions for installation, preprocessing, training and a description of model are described below for both tracks.
 
 # Object detection
 
 # Installation
 
 We use mmdetection (v3.3.0) as the framework for object detection.
-We used python v3.9, pytorch v2.5.1 with cuda v12.4.
+We used python v3.10, pytorch v2.5.1 with cuda v12.4.
 
-To install, follow the instructions [here](https://mmdetection.readthedocs.io/en/latest/get_started.html).  
+To install mmdetection, follow the instructions [here](https://mmdetection.readthedocs.io/en/latest/get_started.html).  
 > Note: you may need to adapt line 9 in mmdetection/mmdet/__init__.py to 
 ```python
 mmcv_maximum_version = '2.2.1'
 ```
+
+An environment.yml file is available for all dependencies.
 
 ## Data preprocessing
 

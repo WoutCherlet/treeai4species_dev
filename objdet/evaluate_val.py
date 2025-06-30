@@ -1,6 +1,5 @@
-import time
-import json 
-import copy
+
+import json
 
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
