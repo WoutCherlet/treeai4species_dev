@@ -98,7 +98,7 @@ def post_process_results(predictions_file, out_path):
     with open(out_path, 'w') as f:
         for line in post_processed_lines:
             f.write(f"{line}\n")
-    print(f"Saved final submission .txt to {out_path}")
+    print(f"Saved postprocessed submission .txt to {out_path}")
 
 
 # read in converted predictions from multiple inference runs and combine
@@ -197,7 +197,9 @@ def convert_results(results_path, img_dir, output_path):
             class_id = detection["class_id"]
             # species ID is actually different from class ID!! class ID is label determined by COCO, which is converted to start at 0 in the order that categories is given in the annotation.json file
             # so to convert back, just index the same dict that is in the categories file and use the key
-            species = species_ids[class_id]
+            # species = species_ids[class_id]
+            # NEW VERSION: ALREADY CORRECT!
+            species = class_id
             conf = detection["score"]
             # get center coords and width and height of preds
             bbox = detection["bbox"]
@@ -262,18 +264,58 @@ def vis_submission(img_dir, submission_path, out_path):
     return
 
 
+def filter_on_score(predictions_path, out_path, confidence_th):
+
+    predictions = label_file_to_list(predictions_path, submission_output=True)
+
+    predictions_filtered = predictions[predictions["conf"] >= confidence_th]
+    
+    lines_out = [f"{row[0]} {row[1]} {row[2]} {row[3]} {row[4]} {row[5]} {row[6]}" for _,row in predictions_filtered.iterrows()]
+    with open(out_path, 'w') as f:
+        for line in lines_out:
+            f.write(f"{line}\n")
+    print(f"Saved filtered submission .txt to {out_path}")
+
+    return
+
+
+
 if __name__ == "__main__":
 
     img_dir = "/Stor1/wout/TreeAI4Species/test_submission/12_RGB_ObjDet_640_fL_test_images/images/"
 
-    # output_path = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_resumed_weighted_sample_ep63/"
+    output_path = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_resumed_aug_normalize/"
+    results_path = os.path.join(output_path, "inference_results.json")
+    out_path_predictions = os.path.join(output_path, "predictions.txt")
+    out_path_predictions_vis = os.path.join(output_path, "submission_vis")
+
+    convert_results(results_path, img_dir, out_path_predictions)
+
+    # vis_submission(img_dir, out_path_predictions, out_path_predictions_vis)
+
+    out_path_postprocess = os.path.join(output_path, "predictions_postprocess.txt")
+    post_process_results(out_path_predictions, out_path_postprocess)
+
+
+    out_path_final = os.path.join(output_path, "predictions_final.txt")
+    filter_on_score(out_path_postprocess, out_path_final, confidence_th=0.1)
+
+    vis_submission(img_dir, out_path_final, out_path_predictions_vis)
+
+    # for val eval
+    # img_dir = "/Stor1/wout/TreeAI4Species/ObjDet/converted_coco/all_no0_masked_images_as_gt/val/images/"
+
+    # output_path = "/Stor1/wout/TreeAI4Species/val_predictions/new_subm_test3/"
     # results_path = os.path.join(output_path, "inference_results.json")
     # out_path_predictions = os.path.join(output_path, "predictions.txt")
     # out_path_predictions_vis = os.path.join(output_path, "submission_vis")
 
-    # convert_results(results_path, img_dir, out_path_predictions)
+    # # convert_results(results_path, img_dir, out_path_predictions)
 
-    # vis_submission(img_dir, out_path_predictions, out_path_predictions_vis)
+    # # vis_submission(img_dir, out_path_predictions, out_path_predictions_vis)
+
+    # out_path_postprocess = os.path.join(output_path, "predictions_postprocess.txt")
+    # post_process_results(out_path_predictions, out_path_postprocess)
 
 
     # post_process_folder = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_no_filtering_1/"
@@ -286,17 +328,17 @@ if __name__ == "__main__":
     # vis_submission(img_dir, out_path_post_processed, out_path_vis_postprocessed)
 
 
-    out_path1 = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_no_filtering_1/"
-    predictions1 = os.path.join(out_path1, "predictions.txt")
+    # out_path1 = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_no_filtering_1/"
+    # predictions1 = os.path.join(out_path1, "predictions.txt")
 
-    out_path2 = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_resumed_weighted_sample_ep63/"
-    predictions2 = os.path.join(out_path2, "predictions.txt")
+    # out_path2 = "/Stor1/wout/TreeAI4Species/output_submission/allno0_masked_as_gt_resumed_weighted_sample_ep63/"
+    # predictions2 = os.path.join(out_path2, "predictions.txt")
 
-    out_dir = "/Stor1/wout/TreeAI4Species/output_submission/ensemble_orig_resumed_ep64"
-    out_path_predictions = os.path.join(out_dir, "predictions.txt")
+    # out_dir = "/Stor1/wout/TreeAI4Species/output_submission/ensemble_orig_resumed_ep64"
+    # out_path_predictions = os.path.join(out_dir, "predictions.txt")
 
-    weights = (0.75, 0.25)
+    # weights = (0.75, 0.25)
 
-    ensemble_predictions(predictions1, predictions2, out_path_predictions)
+    # ensemble_predictions(predictions1, predictions2, out_path_predictions)
 
-    out_path_predictions_vis = os.path.join(out_dir, "submission_vis")
+    # out_path_predictions_vis = os.path.join(out_dir, "submission_vis")

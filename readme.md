@@ -23,6 +23,7 @@ To install, follow the instructions [here](https://mmdetection.readthedocs.io/en
 ```python
 mmcv_maximum_version = '2.2.1'
 ```
+
 ## Data preprocessing
 
 Due to time constraints and the need for manual filtering, as well as the 3 classes already being well represented, the 0_RGB_fL data subset was not used. The other four subset are merged, converted to coco format and a final class list and mapping are extracted.  
@@ -60,6 +61,8 @@ Data was augmented as follows (default parameters unless mentioned):
 - CutOut (mmdetection), cutout_ratio=[(0.05, 0.05), (0.01, 0.01), (0.03, 0.03)], n_holes=(0,3)
 
 The model was trained without augmentations or normalization for 35 epochs, leading to an mAP@0.50 of 0.48.
-A second finetuning run was performed, with the above augmentations and normalization, and with a restarted scheduler to simulate a warm restart.
+A second finetuning run was performed for 32 epochs, with the above augmentations and normalization, and with a restarted scheduler to simulate a warm restart.
+
+Final model predictions are post-processed by first filtering out duplicate detections, filtering out bounding boxes with IoU overlap of >0.85 and keeping the box and class with highest confidence score. Finally, a confidence threshold of 0.2 was used.
 
 

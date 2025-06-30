@@ -191,7 +191,8 @@ def run_inference(config_path, checkpoint_path, test_images_dir, output_dir,
             detection = {
                 'bbox': bbox.tolist(),  # [x1, y1, x2, y2]
                 'score': float(score),
-                'class_id': int(label),
+                # 'class_id': int(label),
+                'class_id': int(label)+1, # new version: labels already converted back but of by one???
                 'class_name': classes[label]
             }
             img_results['detections'].append(detection)

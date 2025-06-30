@@ -1,7 +1,8 @@
 _base_ = "mmdet::hrnet/cascade-rcnn_hrnetv2p-w18-20e_coco.py"
 
 # TODO: ADAPT
-load_from = "/home/wcherlet/TreeAI4Species/treeai4species_dev/work_dirs/cascade_rcnn_hrnetv2p_w18/20250619_170024/best_coco_bbox_mAP_50_epoch_35.pth"
+load_from = "/home/wcherlet/TreeAI4Species/treeai4species_dev/work_dirs/cascade-rcnn_run2/20250626_100204/best_coco_bbox_mAP_50_epoch_32.pth"
+
 
 # ===================== DATASET =====================
 dataset_type = 'CocoDataset'
@@ -28,8 +29,10 @@ classes = ['picea abies', 'pinus sylvestris', 'larix decidua',
        'robinia pseudoacacia', 'pinus sp.', 'salix alba', 'carpinus sp.']
 
 # normalization for finetuning on 12rgb only
-data_mean_12rgb = [88.76029185139829, 111.84298802640055, 66.90453808314389]
-data_std_12rgb = [67.30215281405553, 73.69745598190724, 57.8841168315224]
+# data_mean_12rgb = [88.76029185139829, 111.84298802640055, 66.90453808314389]
+# data_std_12rgb = [67.30215281405553, 73.69745598190724, 57.8841168315224]
+data_mean_normalize_full = [72.16316447706907, 94.31619658327361, 79.79854683068336]
+data_std_normalize_full = [50.2286901789422, 53.97488884710553, 47.07236402248264]
 
 metainfo=dict(classes=classes)
 img_scale = (640, 640)
@@ -71,18 +74,11 @@ train_pipeline = [
         },
         skip_img_without_anno=True),
     # do cutout seperatly, cutout in albu creates errors (due to bboxs being filtered out and not being handled by mmdetection -____-)
-    dict(type="CutOut",
-        cutout_ratio=[(0.05, 0.05), (0.01, 0.01), (0.03, 0.03)],
-        n_holes=(0,3)),
+    # dict(type="CutOut",
+    #     cutout_ratio=[(0.05, 0.05), (0.01, 0.01), (0.03, 0.03)],
+    #     n_holes=(0,3)),
     dict(type='PackDetInputs')
 ]
-# train_pipeline = [
-#     dict(type='LoadImageFromFile'),
-#     dict(type='LoadAnnotations', with_bbox=True),
-#     dict(type='Resize', scale=img_scale, keep_ratio=True),
-#     dict(type='RandomFlip', prob=0.5),
-#     dict(type='PackDetInputs')
-# ]
 
 
 test_pipeline = [
@@ -125,8 +121,8 @@ test_dataloader = val_dataloader
 model = dict(
     data_preprocessor=dict(
         type='DetDataPreprocessor',
-        mean=data_mean_12rgb,
-        std=data_std_12rgb,
+        mean=data_mean_normalize_full,
+        std=data_std_normalize_full,
         bgr_to_rgb=True,
         pad_size_divisor=32),
     roi_head=dict(
@@ -153,7 +149,7 @@ test_evaluator = val_evaluator
 
 # ===================== TRAINING =====================
 # for finetuning with load_from: extra number of epochs here
-train_cfg = dict(max_epochs=30, val_interval=1)
+train_cfg = dict(max_epochs=150, val_interval=1)
 
 val_cfg = dict(type='ValLoop')  # The validation loop type
 test_cfg = dict(type='TestLoop')  # The testing loop type
@@ -161,7 +157,7 @@ test_cfg = dict(type='TestLoop')  # The testing loop type
 # ===================== OPTIMIZATION =====================
 optim_wrapper = dict(
     type='OptimWrapper',
-    optimizer=dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+    optimizer=dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0001)
 )
 
 # ===================== LOGGING =====================
@@ -178,8 +174,8 @@ param_scheduler = [
         end=30,
         gamma=0.1,
         milestones=[
-            15,
-            25,
+            75,
+            125,
         ],
         type='MultiStepLR'),
 ]

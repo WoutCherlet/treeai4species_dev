@@ -111,9 +111,9 @@ train_pipeline = [
         },
         skip_img_without_anno=True),
     # do cutout seperatly, cutout in albu creates errors (due to bboxs being filtered out and not being handled by mmdetection -____-)
-    dict(type="CutOut",
-        cutout_ratio=[(0.05, 0.05), (0.01, 0.01), (0.03, 0.03)],
-        n_holes=(0,3)),
+    # dict(type="CutOut",
+    #     cutout_ratio=[(0.05, 0.05), (0.01, 0.01), (0.03, 0.03)],
+    #     n_holes=(0,3)),
     dict(type='PackDetInputs')
 ]
 # train_pipeline = [
@@ -220,7 +220,7 @@ test_evaluator = val_evaluator
 # ===================== TRAINING =====================
 # train_cfg = dict(max_epochs=50, val_interval=1)
 # for finetuning with load_from: extra number of epochs here
-train_cfg = dict(max_epochs=30, val_interval=1)
+train_cfg = dict(max_epochs=40, val_interval=1)
 
 val_cfg = dict(type='ValLoop')  # The validation loop type
 test_cfg = dict(type='TestLoop')  # The testing loop type

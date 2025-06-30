@@ -1,4 +1,4 @@
-_base_ = 'mmdetection/configs/swin/retinanet_swin-t-p4-w7_fpn_1x_coco.py'
+_base_ = 'mmdet::swin/retinanet_swin-t-p4-w7_fpn_1x_coco.py'
 
 # Update number of classes
 model = dict(
@@ -35,17 +35,46 @@ metainfo=dict(classes=classes)
 
 
 img_scale = (640, 640)
+albu_train_transforms = [
+    dict(type="SquareSymmetry", p=1.0),
+    dict(
+        type='RandomBrightnessContrast',
+        p=0.2),
+    dict(
+        type='OneOf',
+        transforms=[
+            dict(type='GaussianBlur', blur_limit=3, p=1),
+            dict(type='MotionBlur', blur_limit=3, p=1)
+        ],
+        p=0.2),
+    dict(
+        type="GaussNoise",
+        std_range=(0.1, 0.2),
+        p=0.2
+    )
+]
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='Resize', scale=img_scale, keep_ratio=True),
-    dict(type='RandomFlip', prob=0.5),
-    # cutout should help a lot with occluded trees
-    dict(
-        type='CutOut',
-        n_holes = (0,3),
-        cutout_ratio=[(0.05, 0.05), (0.03, 0.03), (0.07, 0.07)]
-    ),
+    dict(type="Albu",
+        transforms=albu_train_transforms,
+        bbox_params=dict(
+            type='BboxParams',
+            format='pascal_voc',
+            label_fields=['gt_bboxes_labels'],
+            min_visibility=0.0,
+            filter_lost_elements=True),
+        keymap={
+            'img': 'image',
+            'gt_masks': 'masks',
+            'gt_bboxes': 'bboxes'
+        },
+        skip_img_without_anno=True),
+    # do cutout seperatly, cutout in albu creates errors (due to bboxs being filtered out and not being handled by mmdetection -____-)
+    # dict(type="CutOut",
+    #     cutout_ratio=[(0.05, 0.05), (0.01, 0.01), (0.03, 0.03)],
+    #     n_holes=(0,3)),
     dict(type='PackDetInputs')
 ]
 test_pipeline = [
@@ -56,7 +85,7 @@ test_pipeline = [
 ]
 
 train_dataloader = dict(
-    batch_size=16,
+    batch_size=8,
     num_workers=4,
     dataset=dict(
         type=dataset_type,
@@ -85,20 +114,36 @@ val_evaluator = dict(type='CocoMetric', ann_file=data_root + 'annotations/instan
 test_evaluator = val_evaluator
 
 
+# ===================== TRAINING =====================
+train_cfg = dict(max_epochs=72, val_interval=1)
+
+val_cfg = dict(type='ValLoop')
+test_cfg = dict(type='TestLoop')
+
 optim_wrapper = dict(
     type='OptimWrapper',
-    optimizer=dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
-)
+    paramwise_cfg=dict(
+        custom_keys={
+            'absolute_pos_embed': dict(decay_mult=0.),
+            'relative_position_bias_table': dict(decay_mult=0.),
+            'norm': dict(decay_mult=0.)
+        }),
+    optimizer=dict(
+        _delete_=True,
+        type='AdamW',
+        lr=0.0001,
+        betas=(0.9, 0.999),
+        weight_decay=0.05),
+    accumulative_counts=2)
 
-# try 40 epochs
 param_scheduler = [
+    dict(type='LinearLR', start_factor=0.001, by_epoch=False, begin=0, end=1000),
     dict(
-        type='MultiStepLR',
-        begin=0,
-        end=40,
+        type='CosineAnnealingLR',
+        T_max=72,  # total epochs
         by_epoch=True,
-        milestones=[25, 33],
-        gamma=0.1
+        begin=0,
+        end=72
     )
 ]
 
