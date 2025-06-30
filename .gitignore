@@ -2,3 +2,4 @@ __pycache__/
 **/__pycache__/
 objdet/logs/
 objdet/work_dirs/
+objdet/ckpts
