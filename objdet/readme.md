@@ -62,7 +62,7 @@ Data was augmented as follows (default parameters unless mentioned):
 - CutOut (mmdetection), cutout_ratio=[(0.05, 0.05), (0.01, 0.01), (0.03, 0.03)], n_holes=(0,3)
 
 The model was trained without augmentations or normalization for 35 epochs, leading to an mAP@0.50 of 0.48.
-A second finetuning run was performed for 32 epochs, with the above augmentations and normalization, and with a restarted scheduler to simulate a warm restart. Checkpoints are available in the ckpts folder.
+A second finetuning run was performed for 32 epochs, with the above augmentations and normalization, and with a restarted scheduler to simulate a warm restart.
 
 Final model predictions are post-processed by first filtering out duplicate detections, filtering out bounding boxes with IoU overlap of >0.85 and keeping the box and class with highest confidence score. Finally, a confidence threshold of 0.2 was used.
 
@@ -75,7 +75,7 @@ All functionality for semantic segmenation is grouped into the `semseg` director
 
 **Key ideas of the approach**:
 - Data: both fully labeled and partially labeled
-- Model: SegFormer with mitb5 backbone
+- Model: SegFormer [ref](https://doi.org/10.48550/arXiv.2105.15203) with mitb5 backbone
 - Loss function: custom combination of Lovasz and categorical cross entropy (CCE) for both per species and background vs tree. For the partially labeled data, the loss is only calculated where there is a label
 - Class weighting: both pixel-wise class weights for CCE and image-wise sample weights used in the data generator (WeightedRandomSampler). Weights are calculated as $1 / log(1.2 + f_c)$ wit $f_c$ the class frequency. For the sample weights, the image-wise class weights are summed up if they occur for each image.
 - Transforms: normalization with mean and std calculated from dataset, basic geometric and photometric transforms, blur and noise, coarse dropout
