@@ -24,10 +24,11 @@ def parse_config(path):
 
 
 class MyDataset(Dataset):
-  def __init__(self, paths, labels='full', mode='train'):
+  def __init__(self, paths, labels='full', mode='train', transform=None):
     self.path = [paths] if not isinstance(paths, list) else paths
     self.labels = [labels] if not isinstance(labels, list) else labels
     self.mode = mode
+    self.transform = transform
     self.images, self.masks = self._read_dataset() 
 
   def __len__(self):
@@ -53,15 +54,29 @@ class MyDataset(Dataset):
               print(f"Warning: Could not read file '{name}': {e}")
     
     return images, masks
+  
+  def get_img_stats(self):
+    stacked = np.stack(self.images, axis=0).astype(np.float32)
+    stacked /= 255
+    pixels = stacked.reshape(-1, stacked.shape[-1])  # shape: (N*H*W, C)
+    # Compute mean and std for each channel
+    self.image_channels_mean = np.mean(pixels, axis=0)
+    self.image_channels_std = np.std(pixels, axis=0)
+    return (self.image_channels_mean, self.image_channels_std)
 
   def __getitem__(self, idx):
     image = self.images[idx]
-    image = np.moveaxis(image, -1, 0).astype(np.float32) / 255
+    # image = np.moveaxis(image, -1, 0).astype(np.float32) / 255
 
     if self.mode == 'infer':
+      image = self.transform(image=image)['image'] if self.transform else image
       return image
     else:
-      mask = self.masks[idx].astype(np.int64)
+      mask = self.masks[idx]
+      if self.transform:
+          augmented = self.transform(image=image, mask=mask)
+          image = augmented['image']
+          mask = augmented['mask'].long()
       return image, mask
 
 
@@ -101,14 +116,16 @@ def get_sample_weights(dataset, n_classes):
         class_counts[u] += 1
 
     class_frequencies = class_counts / n
-    class_weights = 1 / np.log(1.02 + class_frequencies)
+    class_weights = 1 / np.log(class_frequencies + 1.2)
 
     sample_weights = np.zeros(n, dtype=np.int64)
     for i, mask in enumerate(masks_all):
         # Get unique ID's (ID = index)
         u = np.unique(mask)
         sample_weights[i] = class_weights[u].sum()
-    
+
+    max_weight = 50.
+    sample_weights = np.clip(sample_weights, 1.0, max_weight)
     return sample_weights
 
 
@@ -126,7 +143,7 @@ def eval_confusion_matrix(dataloader, model, device, n_classes=62):
     # During inference, disable gradient computation using `torch.no_grad()`
     cm = np.zeros((n_classes, n_classes), dtype=np.int64)
     with torch.no_grad():
-        for i, (images, masks) in enumerate(dataloader):
+        for images, masks in tqdm(dataloader, desc='Evaluating'):
             images = images.to(device)
             logits = model(images)
             mask_pred = logits_to_labels(logits)
@@ -199,13 +216,15 @@ class CustomLoss:
     def __init__(self, class_counts, device):
         # Weighted CCE loss for all classes
         class_frequency = class_counts / class_counts.sum()
-        class_weights = torch.tensor(1 / np.log(class_frequency + 1.02)).to(torch.float32).to(device)
+        class_weights = 1 / np.log(class_frequency + 1.2)
+        class_weights = torch.tensor(class_weights).to(torch.float32).to(device)
         self.cce = nn.CrossEntropyLoss(ignore_index=-1, weight=class_weights)
 
         # Binary CE for tree vs no tree
         class_count_tree_notree = np.array([class_counts[0], class_counts[1:].sum()])
         class_freq_tree_notree = class_count_tree_notree / class_count_tree_notree.sum()
-        class_weight_tree_notree = torch.tensor(1 / np.log(class_freq_tree_notree + 1.02)).to(torch.float32).to(device)
+        class_weight_tree_notree = 1 / np.log(class_freq_tree_notree + 1.2)
+        class_weight_tree_notree = torch.tensor(class_weight_tree_notree).to(torch.float32).to(device)
         self.cce_tree = nn.CrossEntropyLoss(ignore_index=-1, weight=class_weight_tree_notree)
 
         # Lovasz loss
@@ -228,9 +247,9 @@ class CustomLoss:
 
         # Combined
         total_loss = (
-            0.5 * cce_loss +  
-            0.3 * cce_tree_loss +  
-            1 * lovasz_loss  
+            0.3 * cce_loss +  # 0.5
+            0.1 * cce_tree_loss +  # 0.3
+            1 * lovasz_loss  # 1
         )
 
         loss_dict = {

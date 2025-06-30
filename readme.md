@@ -66,3 +66,32 @@ A second finetuning run was performed for 32 epochs, with the above augmentation
 Final model predictions are post-processed by first filtering out duplicate detections, filtering out bounding boxes with IoU overlap of >0.85 and keeping the box and class with highest confidence score. Finally, a confidence threshold of 0.2 was used.
 
 
+# Semantic Segmentation
+
+All functionality for semantic segmenation is grouped into the `semseg` directory.
+
+**Installation**: make new conda environment (see `environment.yml`)
+
+**Key ideas of the approach**:
+- Data: both fully labeled and partially labeled
+- Model: SegFormer with mitb5 backbone
+- Loss function: custom combination of Lovasz and categorical cross entropy (CCE) for both per species and background vs tree. For the partially labeled data, the loss is only calculated where there is a label
+- Class weighting: both pixel-wise class weights for CCE and image-wise sample weights used in the data generator (WeightedRandomSampler). Weights are calculated as $1 / log(1.2 + f_c)$ wit $f_c$ the class frequency. For the sample weights, the image-wise class weights are summed up if they occur for each image.
+- Transforms: normalization with mean and std calculated from dataset, basic geometric and photometric transforms, blur and noise, coarse dropout
+- Optimization: AdamW (weight decay not for bias and norm layers) and OneCycleLR schedule
+- Training: start from imagenet weights, evaluate on validation set each epoch and maintain only model with highest mIoU_val
+
+\
+All data paths and high level hyperparameters are specified in a `config.yml` file.
+
+**Training:**
+
+```
+python train.py config.yml
+```
+
+**Inference:**
+
+```
+python infer.py config.yml
+```
